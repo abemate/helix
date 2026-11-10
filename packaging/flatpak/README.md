@@ -7,18 +7,24 @@ tray libraries.
 
 ## ArkHost repository
 
-HelixNotes can be distributed through ArkHost's own signed Flatpak repository.
-The proposed public base URL is `https://repo.arkhost.com/flatpak/`. It is not
-published by these commands.
+HelixNotes is distributed through ArkHost's signed Flatpak repository at
+`https://repo.arkhost.com/flatpak/`, served by Shiny. Install using
+[HelixNotes.flatpakref](https://repo.arkhost.com/flatpak/HelixNotes.flatpakref).
+The public catalog advertises version 1.3.7.
 
 The application ID is `com.helixnotes.HelixNotes`; the repository collection ID is
 `com.arkhost.Flatpak`. Keep both stable so installed applications receive future
 updates from the same repository.
 
+Signing fingerprint: `B66171BA8BBE0F590D067B86D02631809E3F7AE2`.
+The initial publication was checked using a separate temporary Flatpak store:
+the install descriptor, catalog version, signatures and package download passed.
+That check did not deploy or launch the application.
+
 `prepare-repository.py` imports a built bundle, prepares AppStream metadata and
 static deltas, and signs the application and repository metadata with an OpenPGP
 key. It exports only the public key. The signing key stays in the local keyring.
-Back up that permanent signing identity offline before first publication.
+Keep an offline backup of that permanent signing identity.
 
 After building the bundle, prepare a fresh signed output:
 
@@ -57,6 +63,8 @@ deployment workflow. The publisher prepares local files; it does not connect to
 Shiny or change its web configuration. Serve the tree over HTTPS with HTTP
 keep-alive enabled. Keep repository summaries and install descriptors fresh in
 any HTTP cache; content-addressed objects can be cached longer.
+Keep updates scoped to this `flatpak/` subtree. APT/RPM deployments must preserve
+it, and Flatpak deployments must preserve the other repository subtrees.
 
 HelixNotes and its updates come from ArkHost. The shared GNOME runtime continues
 to come from its existing upstream repository. Users install through
@@ -84,7 +92,7 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 ## Install and run
 
 ```sh
-flatpak install --user src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak
+flatpak install --user https://repo.arkhost.com/flatpak/HelixNotes.flatpakref
 flatpak run com.helixnotes.HelixNotes
 ```
 
@@ -99,10 +107,9 @@ while preserving a note's modification time. Attachments and hidden app data are
 excluded from these scans; note contents are read only when a change is detected.
 
 The build sets `HELIXNOTES_INSTALL_TYPE=flatpak`, which suppresses the in-app
-updater. Install a newer bundle to update this local package. Automatic Flatpak
-updates require a hosted repository or a Flathub release; neither is published by
-these build commands. The bundle references Flathub for its runtime, which is
-installed separately.
+updater. Discover, GNOME Software or `flatpak update` handle updates for installs
+from the ArkHost repository. The bundle references Flathub for its runtime, which
+is installed separately.
 
 ## Refresh dependencies
 
@@ -127,21 +134,21 @@ build; it does not grant network access to the build sandbox.
 The store developer is Yuri Karamian. The Flatpak build overrides Tauri's
 identifier only for this package; native packages retain their existing ID.
 
-Version 1.3.7 has stable package metadata dated 2026-11-10. This describes the
-prepared release package; publication and the public release tag are separate
-steps. Keep the manifest pinned to the source revision containing that metadata.
+Version 1.3.7 is published in the ArkHost Flatpak repository with stable package
+metadata dated 2026-11-10. GitLab release tags and other platform channels are
+managed separately. Keep the manifest pinned to the matching source revision.
 
-The prepared submission targets x86_64. The existing local bundle in Nextcloud
-uses the earlier `com.helixnotes.app` ID; it has not been rebuilt or replaced by
-this preparation. The new ID has a separate Flatpak profile. Users can select the
-same notes folder through the system picker.
-
-No builds, tests or Flathub linter checks were run for this submission preparation.
-Flathub requires those checks before a submission can be treated as ready. See the
-[submission guide](https://docs.flathub.org/docs/for-app-authors/submission) and
-[current requirements](https://docs.flathub.org/docs/for-app-authors/requirements).
+The published package targets x86_64. The earlier test bundle in Nextcloud uses
+the `com.helixnotes.app` ID and has not been overwritten. Install through the
+public link once to use the permanent ID and receive repository updates. The new
+ID has a separate Flatpak profile; select the same notes folder through the system
+picker.
 
 ## Optional Flathub submission
+
+The separate Flathub submission draft has not been checked with Flathub's build
+wrapper or linter. See the [submission guide](https://docs.flathub.org/docs/for-app-authors/submission)
+and [current requirements](https://docs.flathub.org/docs/for-app-authors/requirements).
 
 The Flathub repository needs these files at its root:
 
