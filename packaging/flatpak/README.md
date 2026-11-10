@@ -1,6 +1,6 @@
 # Flatpak
 
-This builds HelixNotes from the current checkout inside the GNOME 51 SDK. Rust
+This builds the Git revision pinned in the manifest inside the GNOME 51 SDK. Rust
 and Node dependencies are pinned by the existing lockfiles and downloaded before
 the sandboxed, offline build. The shared-modules submodule supplies the Ayatana
 tray libraries.
@@ -46,9 +46,6 @@ updates require a hosted repository or a Flathub release; neither is published b
 these build commands. The bundle references Flathub for its runtime, which is
 installed separately.
 
-Close native HelixNotes before testing: native and Flatpak installations use the
-same single-instance application identifier.
-
 ## Refresh dependencies
 
 Regenerate both source lists whenever their lockfiles change. The initial lists
@@ -85,3 +82,23 @@ No builds, tests or Flathub linter checks were run for this submission preparati
 Flathub requires those checks before a submission can be treated as ready. See the
 [submission guide](https://docs.flathub.org/docs/for-app-authors/submission) and
 [current requirements](https://docs.flathub.org/docs/for-app-authors/requirements).
+
+## Submission files
+
+The Flathub repository needs these files at its root:
+
+- `com.helixnotes.HelixNotes.yml`
+- `cargo-sources.json`
+- `node-sources.json`
+- `flathub.json`
+- The `shared-modules` Git submodule, pinned to
+  `6be1f986ac28a2b7d745e5ff45a3f8a2d3345083`
+
+Desktop, icon and MetaInfo files are installed from the pinned application source.
+The source currently includes the packaging metadata and the Flatpak watcher fix.
+It is a preparation revision, not a published v1.3.7 release tag.
+
+Use a branch based on `flathub/flathub`'s `new-pr` branch. Preserve the upstream
+submission template. Author the submission description and any review replies
+yourself, following Flathub's current requirements. This preparation does not
+create a GitHub pull request or publish an application.
