@@ -5,6 +5,64 @@ and Node dependencies are pinned by the existing lockfiles and downloaded before
 the sandboxed, offline build. The shared-modules submodule supplies the Ayatana
 tray libraries.
 
+## ArkHost repository
+
+HelixNotes can be distributed through ArkHost's own signed Flatpak repository.
+The proposed public base URL is `https://repo.arkhost.com/flatpak/`. It is not
+published by these commands.
+
+The application ID is `com.helixnotes.HelixNotes`; the repository collection ID is
+`com.arkhost.Flatpak`. Keep both stable so installed applications receive future
+updates from the same repository.
+
+`prepare-repository.py` imports a built bundle, prepares AppStream metadata and
+static deltas, and signs the application and repository metadata with an OpenPGP
+key. It exports only the public key. The signing key stays in the local keyring.
+Back up that permanent signing identity offline before first publication.
+
+After building the bundle, prepare a fresh signed output:
+
+```sh
+python3 packaging/flatpak/prepare-repository.py \
+  src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak \
+  --output /path/to/arkhost-flatpak-1.3.7 \
+  --gpg-key FULL_OPENPGP_FINGERPRINT
+```
+
+The script uses the `ostree` command when available, or the system's OSTree
+GObject bindings to initialize repositories. This Fedora workstation already
+has those bindings. For subsequent releases, add
+`--previous-directory /path/to/previous-output` to preserve the publication
+history. Always choose a new output directory.
+
+If the signing identity is not ready, `--unsigned` can replace `--gpg-key` for a
+local preview. The output will be visibly marked as unsigned and will contain no
+install descriptors.
+
+The signed output contains:
+
+```text
+repo/                    Application repository and update metadata
+arkhost.flatpakrepo      Adds the ArkHost remote
+HelixNotes.flatpakref    Adds the remote and installs HelixNotes
+```
+
+Unsigned staging omits install links and is not a publishable repository. Keep
+the previous signed output when preparing an update so repository history and
+delta updates are retained.
+
+Publish the prepared public files under
+`/srv/www/repo.arkhost.com/flatpak/` on Shiny using the existing repository
+deployment workflow. The publisher prepares local files; it does not connect to
+Shiny or change its web configuration. Serve the tree over HTTPS with HTTP
+keep-alive enabled. Keep repository summaries and install descriptors fresh in
+any HTTP cache; content-addressed objects can be cached longer.
+
+HelixNotes and its updates come from ArkHost. The shared GNOME runtime continues
+to come from its existing upstream repository. Users install through
+`HelixNotes.flatpakref` and receive updates through Discover, GNOME Software or
+`flatpak update`.
+
 ## Build
 
 Run from the repository root:
@@ -12,8 +70,8 @@ Run from the repository root:
 ```sh
 git submodule update --init packaging/flatpak/shared-modules
 flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.node24//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08
-flatpak run org.flatpak.Builder --user --force-clean --state-dir=src-tauri/target/flatpak/state --repo=src-tauri/target/flatpak/repo src-tauri/target/flatpak/build packaging/flatpak/com.helixnotes.HelixNotes.yml
-flatpak build-bundle src-tauri/target/flatpak/repo src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak com.helixnotes.HelixNotes stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak run org.flatpak.Builder --user --force-clean --collection-id=com.arkhost.Flatpak --state-dir=src-tauri/target/flatpak/state --repo=src-tauri/target/flatpak/arkhost-origin src-tauri/target/flatpak/build packaging/flatpak/com.helixnotes.HelixNotes.yml
+flatpak build-bundle src-tauri/target/flatpak/arkhost-origin src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak com.helixnotes.HelixNotes stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
 The commands require a user-local Flathub remote. If only a system remote exists,
@@ -69,9 +127,9 @@ build; it does not grant network access to the build sandbox.
 The store developer is Yuri Karamian. The Flatpak build overrides Tauri's
 identifier only for this package; native packages retain their existing ID.
 
-Version 1.3.7 is still unreleased. Its MetaInfo entry is marked as development.
-Before a stable submission, finish the release, set its actual release date and
-stable type in MetaInfo, and pin the manifest to that released source revision.
+Version 1.3.7 has stable package metadata dated 2026-11-10. This describes the
+prepared release package; publication and the public release tag are separate
+steps. Keep the manifest pinned to the source revision containing that metadata.
 
 The prepared submission targets x86_64. The existing local bundle in Nextcloud
 uses the earlier `com.helixnotes.app` ID; it has not been rebuilt or replaced by
@@ -83,7 +141,7 @@ Flathub requires those checks before a submission can be treated as ready. See t
 [submission guide](https://docs.flathub.org/docs/for-app-authors/submission) and
 [current requirements](https://docs.flathub.org/docs/for-app-authors/requirements).
 
-## Submission files
+## Optional Flathub submission
 
 The Flathub repository needs these files at its root:
 
