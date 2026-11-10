@@ -65,7 +65,7 @@ modules:
     sources:
       - type: git
         url: https://gitlab.com/ArkHost/HelixNotes.git
-        commit: d36ac5e9facdc209e63306228bacbd55effbf597
+        commit: d5dc7147ab9c8d3fa7a8ce034339e9f2a5b5e260
         disable-submodules: true
       - cargo-sources.json
       - node-sources.json
