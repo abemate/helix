@@ -12,8 +12,8 @@ Run from the repository root:
 ```sh
 git submodule update --init packaging/flatpak/shared-modules
 flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.node24//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08
-flatpak run org.flatpak.Builder --user --force-clean --state-dir=src-tauri/target/flatpak/state --repo=src-tauri/target/flatpak/repo src-tauri/target/flatpak/build packaging/flatpak/com.helixnotes.app.yml
-flatpak build-bundle src-tauri/target/flatpak/repo src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak com.helixnotes.app stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak run org.flatpak.Builder --user --force-clean --state-dir=src-tauri/target/flatpak/state --repo=src-tauri/target/flatpak/repo src-tauri/target/flatpak/build packaging/flatpak/com.helixnotes.HelixNotes.yml
+flatpak build-bundle src-tauri/target/flatpak/repo src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak com.helixnotes.HelixNotes stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
 The commands require a user-local Flathub remote. If only a system remote exists,
@@ -27,7 +27,7 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 
 ```sh
 flatpak install --user src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak
-flatpak run com.helixnotes.app
+flatpak run com.helixnotes.HelixNotes
 ```
 
 Choose vault folders using the folder picker. Flatpak grants access to the chosen
@@ -36,8 +36,7 @@ whole home directory. Its settings are separate from native installations.
 The document portal does not forward external file-change notifications, so this
 build checks visible notes and notebooks about every two seconds in small vaults.
 The interval grows with scan cost in larger vaults to limit background CPU use.
-It compares file
-size and precise modification/change timestamps, including changes made
+It compares file size and precise modification/change timestamps, including changes made
 while preserving a note's modification time. Attachments and hidden app data are
 excluded from these scans; note contents are read only when a change is detected.
 
@@ -70,5 +69,19 @@ Flatpak verifies the downloaded sources against the generated checksums. This
 keeps pnpm from querying registry metadata and attestations during the offline
 build; it does not grant network access to the build sandbox.
 
-A Flathub submission also needs a pinned Git source in place of the local
-directory source, release metadata and a content-rating assessment.
+The store developer is Yuri Karamian. The Flatpak build overrides Tauri's
+identifier only for this package; native packages retain their existing ID.
+
+Version 1.3.7 is still unreleased. Its MetaInfo entry is marked as development.
+Before a stable submission, finish the release, set its actual release date and
+stable type in MetaInfo, and pin the manifest to that released source revision.
+
+The prepared submission targets x86_64. The existing local bundle in Nextcloud
+uses the earlier `com.helixnotes.app` ID; it has not been rebuilt or replaced by
+this preparation. The new ID has a separate Flatpak profile. Users can select the
+same notes folder through the system picker.
+
+No builds, tests or Flathub linter checks were run for this submission preparation.
+Flathub requires those checks before a submission can be treated as ready. See the
+[submission guide](https://docs.flathub.org/docs/for-app-authors/submission) and
+[current requirements](https://docs.flathub.org/docs/for-app-authors/requirements).
