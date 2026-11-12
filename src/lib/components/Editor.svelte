@@ -66,7 +66,7 @@
 	import { documentHeadings, sourceHeadings, activeHeadingIndex, mapDocumentHeadings, mapSourceHeadings, type OutlineHeading } from '$lib/editor/outline';
 	import { createEditorMarkdownParser } from '$lib/editor/markdownParser';
 	import { collectClipboardPayload, isEmptyPayload, needsNativeClipboard, withNativeClipboard, type ClipboardPastePayload } from '$lib/utils/clipboard-paste';
-	import { applySingleLineSpacing } from '$lib/utils/clipboard-copy';
+	import { createSingleLineClipboardSerializer } from '$lib/utils/clipboard-copy';
 	import { externalNoteReferences } from '$lib/editor/externalNote';
 	import { tagIterationKey } from '$lib/utils/tag-styles';
 	import { replaceWithWikiLink } from '$lib/editor/wikiLinks';
@@ -126,16 +126,7 @@
 	const CopyLineSpacing = Extension.create({
 		name: 'copyLineSpacing',
 		addProseMirrorPlugins() {
-			const serializer = DOMSerializer.fromSchema(this.editor.schema);
-			const serializeFragment = serializer.serializeFragment.bind(serializer);
-			serializer.serializeFragment = (fragment, options, target) => {
-				const dom = serializeFragment(fragment, options, target);
-				const wrapper = document.createElement('div');
-				wrapper.appendChild(dom);
-				const template = document.createElement('template');
-				template.innerHTML = applySingleLineSpacing(wrapper.innerHTML);
-				return template.content;
-			};
+			const serializer = createSingleLineClipboardSerializer(this.editor.schema);
 			return [new Plugin({
 				key: new PluginKey('copyLineSpacing'),
 				props: { clipboardSerializer: serializer },
