@@ -69,6 +69,8 @@ export class SourceController {
 	private configuration = new Compartment();
 	private readOnly = false;
 	private numbers = false;
+	private placeholderText = 'Start writing...';
+	private accessibleLabel = 'Markdown source';
 	private extensions: Extension[];
 	private onChange: (changes: ChangeDesc, edited: boolean) => void;
 	state: EditorState;
@@ -83,8 +85,6 @@ export class SourceController {
 		this.extensions = [
 			markdown(), history(), drawSelection(), sourceSearchDecoration, sourceTheme,
 			syntaxHighlighting(sourceSyntax), indentUnit.of('\t'), EditorState.tabSize.of(4),
-			placeholder('Start writing...'),
-			EditorView.contentAttributes.of({ 'aria-label': 'Markdown source', tabindex: '0', spellcheck: 'false', autocapitalize: 'off' }),
 			keymap.of([{ key: 'Shift-Enter', run: sourceHardBreak }, indentWithTab, ...historyKeymap, ...defaultKeymap]),
 			EditorView.domEventHandlers({
 				keydown: (event, view) => {
@@ -105,7 +105,16 @@ export class SourceController {
 
 	private settings(): Extension[] {
 		return [EditorState.readOnly.of(this.readOnly), EditorView.editable.of(!this.readOnly),
+			placeholder(this.placeholderText),
+			EditorView.contentAttributes.of({ 'aria-label': this.accessibleLabel, tabindex: '0', spellcheck: 'false', autocapitalize: 'off' }),
 			this.numbers ? lineNumbers() : EditorView.lineWrapping];
+	}
+
+	setLabels(placeholderText: string, accessibleLabel: string): void {
+		if (placeholderText === this.placeholderText && accessibleLabel === this.accessibleLabel) return;
+		this.placeholderText = placeholderText;
+		this.accessibleLabel = accessibleLabel;
+		this.dispatch({ effects: this.configuration.reconfigure(this.settings()) });
 	}
 
 	configure(readOnly: boolean, numbers: boolean): void {

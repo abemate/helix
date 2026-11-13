@@ -2,6 +2,7 @@ use crate::asset_scope;
 use crate::search::SearchIndex;
 use crate::state::AppState;
 use crate::types::*;
+use crate::vault::daily_template::DailyTemplate;
 use crate::vault::operations;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -488,6 +489,36 @@ pub fn complete_window_close<R: Runtime>(
         return window.hide().map_err(|error| error.to_string());
     }
     window.destroy().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn set_language<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    language: String,
+) -> Result<(), String> {
+    if language != "system" && !crate::i18n::supported_languages().contains(&language) {
+        return Err("Unsupported interface language".to_string());
+    }
+    let mut config = state.config.lock().map_err(|e| e.to_string())?;
+    let previous = std::mem::replace(&mut config.language, language.clone());
+    if let Err(error) = save_app_config(&config) {
+        config.language = previous;
+        return Err(error);
+    }
+    drop(config);
+    #[cfg(desktop)]
+    if let Some(tray) = app.tray_by_id("helixnotes") {
+        match crate::localized_tray_menu(&app, &language) {
+            Ok(menu) => {
+                let _ = tray.set_menu(Some(menu));
+            }
+            Err(error) => log::error!("Could not update tray language: {error}"),
+        }
+    }
+    // Detached note windows share this device's language, without touching vault state.
+    let _ = app.emit("language-changed", &language);
+    Ok(())
 }
 
 #[tauri::command]
@@ -996,12 +1027,97 @@ pub async fn create_daily_note(
         .map_err(|error| error.to_string())?
         .daily_title_format
         .clone();
-    let _write_guard = state.note_save.lock().await;
-    let entry = operations::create_daily_note(&vault_path, date.as_deref(), &title_format)?;
+    let write_guard = state.note_save.clone().lock_owned().await;
+    let entry = tauri::async_runtime::spawn_blocking(move || {
+        let _write_guard = write_guard;
+        operations::create_daily_note(&vault_path, date.as_deref(), &title_format)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
 
     index_note_bg(search, &entry.path);
 
     Ok(entry)
+}
+
+#[tauri::command]
+pub async fn get_daily_note_template(
+    state: State<'_, AppState>,
+    vault_path: String,
+) -> Result<DailyTemplate, String> {
+    state.validate_vault(&vault_path)?;
+    let guard = state.note_save.clone().lock_owned().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        crate::vault::daily_template::read(&vault_path).map(DailyTemplate::from_raw)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn set_daily_note_template(
+    state: State<'_, AppState>,
+    vault_path: String,
+    template: Option<String>,
+    expected_template: Option<String>,
+) -> Result<DailyTemplate, String> {
+    let guard = state.note_save.clone().lock_owned().await;
+    state.validate_vault(&vault_path)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        crate::vault::daily_template::set(
+            &vault_path,
+            template.as_deref(),
+            expected_template.as_deref(),
+        )
+        .map(DailyTemplate::from_raw)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn import_daily_note_template<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    vault_path: String,
+    title: String,
+    expected_template: Option<String>,
+) -> Result<Option<DailyTemplate>, String> {
+    state.validate_vault(&vault_path)?;
+    // Pick inside this command: callers cannot nominate an arbitrary external path.
+    // Do not hold the note-save lock while a user is choosing a file.
+    let text = tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let Some(source) = app
+            .dialog()
+            .file()
+            .set_title(title)
+            .add_filter("Markdown", &["md"])
+            .blocking_pick_file()
+        else {
+            return Ok::<_, String>(None);
+        };
+        let mut options = tauri_plugin_fs::OpenOptions::new();
+        options.read(true);
+        let file = app.fs().open(source, options).map_err(|e| e.to_string())?;
+        crate::vault::daily_template::read_from(file).map(Some)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let Some(text) = text else {
+        return Ok(None);
+    };
+    let guard = state.note_save.clone().lock_owned().await;
+    state.validate_vault(&vault_path)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        crate::vault::daily_template::set(&vault_path, Some(&text), expected_template.as_deref())
+            .map(|raw| Some(DailyTemplate::from_raw(raw)))
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -3962,6 +4078,30 @@ pub async fn get_note_version_content(
 // ── AI ──
 
 #[tauri::command]
+pub async fn fetch_ai_models(
+    provider: String,
+    api_key: String,
+) -> Result<Vec<crate::ai::models::AiModel>, String> {
+    crate::ai::models::fetch_models(&provider, &api_key).await
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AiImageContext {
+    vault_path: String,
+    note_path: String,
+    paths: Vec<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AiRequestConfig {
+    provider: Option<String>,
+    model: String,
+    base_url: Option<String>,
+}
+
+#[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub fn set_ai_settings(
     state: State<'_, AppState>,
@@ -3974,8 +4114,20 @@ pub fn set_ai_settings(
     openai_compatible_base_url: Option<String>,
     openai_compatible_api_key: Option<String>,
 ) -> Result<(), String> {
-    let mut config = state.config.lock().map_err(|e| e.to_string())?;
-    let key = api_key.filter(|k| !k.is_empty());
+    let mut current = state.config.lock().map_err(|e| e.to_string())?;
+    let mut config = current.clone();
+    let key = api_key
+        .map(|key| key.trim().to_string())
+        .filter(|key| !key.is_empty());
+    let model = model.trim().to_string();
+    if model.len() > 512
+        || key.as_ref().is_some_and(|key| key.len() > 8192)
+        || writing_style
+            .as_ref()
+            .is_some_and(|style| style.len() > 256 * 1024)
+    {
+        return Err("AI settings exceed the size limit".into());
+    }
     match provider.as_deref() {
         Some("openai") => config.openai_api_key = key,
         Some("ollama") => {
@@ -3987,12 +4139,23 @@ pub fn set_ai_settings(
                 openai_compatible_base_url.filter(|u| !u.trim().is_empty());
             config.openai_compatible_api_key = openai_compatible_api_key.filter(|k| !k.is_empty());
         }
-        _ => config.ai_api_key = key,
+        Some("anthropic") => config.ai_api_key = key,
+        None => {} // Turning AI off must not erase saved credentials.
+        _ => return Err("Unsupported AI provider".into()),
+    }
+    let remembered = (!model.is_empty()).then(|| model.clone());
+    match provider.as_deref() {
+        Some("openai") => config.openai_model = remembered,
+        Some("anthropic") => config.anthropic_model = remembered,
+        Some("ollama") => config.ollama_model = remembered,
+        Some("openai_compatible") => config.openai_compatible_model = remembered,
+        _ => {}
     }
     config.ai_provider = provider;
     config.ai_model = model;
     config.ai_writing_style = writing_style.filter(|s| !s.trim().is_empty());
     save_app_config(&config)?;
+    *current = config;
     Ok(())
 }
 
@@ -4004,7 +4167,7 @@ pub fn test_ai_connection(app: AppHandle) -> Result<(), String> {
         let provider = config
             .ai_provider
             .clone()
-            .unwrap_or_else(|| "anthropic".to_string());
+            .ok_or("AI is disabled. Choose a provider in Settings.")?;
         let key = match provider.as_str() {
             "ollama" => Some(config.ollama_api_key.clone().unwrap_or_default()),
             "openai_compatible" => {
@@ -4021,6 +4184,14 @@ pub fn test_ai_connection(app: AppHandle) -> Result<(), String> {
         };
         (provider, key, model, base_url)
     };
+    if model.trim().is_empty()
+        || !matches!(
+            provider.as_str(),
+            "openai" | "anthropic" | "ollama" | "openai_compatible"
+        )
+    {
+        return Err("Choose an AI provider and model in Settings".into());
+    }
 
     std::thread::spawn(move || {
         use tauri::Emitter;
@@ -4267,20 +4438,25 @@ pub fn sync_now(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn ai_ask(
+pub async fn ai_ask(
     app: AppHandle,
     action: String,
     text: String,
     custom_prompt: Option<String>,
     request_id: String,
+    image_context: Option<AiImageContext>,
+    expected_config: Option<AiRequestConfig>,
 ) -> Result<(), String> {
+    if text.len() + custom_prompt.as_ref().map_or(0, String::len) > 2 * 1024 * 1024 {
+        return Err("AI text exceeds the 2 MiB request limit".into());
+    }
     let (provider, api_key, model, writing_style, base_url) = {
         let state = app.state::<AppState>();
         let config = state.config.lock().map_err(|e| e.to_string())?;
         let provider = config
             .ai_provider
             .clone()
-            .unwrap_or_else(|| "anthropic".to_string());
+            .ok_or("AI is disabled. Choose a provider in Settings.")?;
         let key = match provider.as_str() {
             "ollama" => Some(config.ollama_api_key.clone().unwrap_or_default()),
             "openai_compatible" => {
@@ -4299,6 +4475,49 @@ pub fn ai_ask(
         (provider, key, model, style, base_url)
     };
 
+    if let Some(expected) = expected_config {
+        let relevant_base = matches!(provider.as_str(), "ollama" | "openai_compatible");
+        if expected.provider.as_deref() != Some(provider.as_str())
+            || expected.model != model
+            || (relevant_base && expected.base_url != base_url)
+        {
+            return Err(
+                "AI settings changed. Reopen AI actions before sending this request.".into(),
+            );
+        }
+    } else if image_context.is_some() {
+        return Err("Confirm the AI destination before including images".into());
+    }
+    if model.trim().is_empty() {
+        return Err("Choose an AI model in Settings before starting".into());
+    }
+    if !matches!(
+        provider.as_str(),
+        "openai" | "anthropic" | "ollama" | "openai_compatible"
+    ) {
+        return Err("Unsupported AI provider".into());
+    }
+    let images = if let Some(context) = image_context {
+        let state = app.state::<AppState>();
+        state.validate_vault(&context.vault_path)?;
+        let guard = state.note_save.clone().lock_owned().await;
+        tauri::async_runtime::spawn_blocking(move || {
+            let _guard = guard;
+            crate::ai::images::prepare(&context.vault_path, &context.note_path, &context.paths)
+        })
+        .await
+        .map_err(|_| "AI image preparation failed")??
+    } else {
+        Vec::new()
+    };
+
+    if writing_style
+        .as_ref()
+        .is_some_and(|style| style.len() > 256 * 1024)
+        || model.len() > 512
+    {
+        return Err("AI settings exceed the size limit".into());
+    }
     let mut system_prompt = "You are a helpful writing assistant inside a note-taking app called HelixNotes. \
         You help users improve, rewrite, summarize, and transform their text. \
         Return ONLY the resulting text - no explanations, no markdown code fences, no preamble. \
@@ -4313,7 +4532,11 @@ pub fn ai_ask(
         ));
     }
 
+    if action == "describe_images" && images.is_empty() {
+        return Err("Select images before requesting a description".into());
+    }
     let user_message = match action.as_str() {
+        "describe_images" => format!("Describe the attached images, including readable text and relevant details. Preserve the existing text and every media placeholder; add descriptions alongside them:\n\n{}", text),
         "improve" => format!("Improve the writing quality of this text while keeping the same meaning and tone:\n\n{}", text),
         "fix_grammar" => format!("Fix all grammar, spelling, and punctuation errors in this text. Keep the original style:\n\n{}", text),
         "shorter" => format!("Make this text more concise while keeping the key points:\n\n{}", text),
@@ -4343,6 +4566,7 @@ pub fn ai_ask(
         user_message,
         request_id,
         base_url,
+        images,
     );
     Ok(())
 }

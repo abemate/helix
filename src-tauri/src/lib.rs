@@ -3,6 +3,7 @@ mod asset_scope;
 mod backup;
 mod commands;
 mod history;
+mod i18n;
 mod image_proxy;
 mod search;
 mod state;
@@ -165,6 +166,7 @@ pub fn run() {
             #[cfg(desktop)]
             commands::complete_window_close,
             commands::set_theme,
+            commands::set_language,
             commands::set_system_themes,
             commands::set_accent_color,
             commands::save_custom_theme,
@@ -191,6 +193,9 @@ pub fn run() {
             commands::create_note,
             commands::duplicate_note,
             commands::create_daily_note,
+            commands::get_daily_note_template,
+            commands::set_daily_note_template,
+            commands::import_daily_note_template,
             commands::rename_note,
             commands::delete_note,
             commands::move_note,
@@ -248,6 +253,7 @@ pub fn run() {
             commands::create_version,
             commands::set_ai_settings,
             commands::test_ai_connection,
+            commands::fetch_ai_models,
             commands::ai_ask,
             commands::set_sync_settings,
             commands::test_sync_connection,
@@ -393,10 +399,24 @@ pub fn run() {
 }
 
 #[cfg(desktop)]
+fn localized_tray_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    language: &str,
+) -> tauri::Result<tauri::menu::Menu<R>> {
+    let show = MenuItemBuilder::with_id("show", i18n::text(language, "native.show")).build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", i18n::text(language, "native.quit")).build(app)?;
+    MenuBuilder::new(app).items(&[&show, &quit]).build()
+}
+
+#[cfg(desktop)]
 fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let show = MenuItemBuilder::with_id("show", "Show HelixNotes").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+    let language = app
+        .state::<AppState>()
+        .config
+        .lock()
+        .map(|config| config.language.clone())
+        .unwrap_or_default();
+    let menu = localized_tray_menu(app.handle(), &language)?;
 
     let _tray = TrayIconBuilder::with_id("helixnotes")
         .icon(

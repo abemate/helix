@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t as ui } from '$lib/i18n';
+	import { message as showMessage } from '@tauri-apps/plugin-dialog';
 	import { onMount, onDestroy, tick, untrack } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { listen } from '@tauri-apps/api/event';
@@ -725,6 +727,10 @@
 			if (isMobile) $mobileView = 'editor';
 		} catch (e) {
 			console.error('Failed to create/open daily note:', e);
+			if (navigationIsCurrent(token)) {
+				await showMessage(`${$ui('ui.could_not_open_this_note')}\n\n${String(e)}`, { title: $ui('ui.daily_note'), kind: 'error' })
+					.catch(error => console.error('Could not display daily-note error:', error));
+			}
 		}
 	}
 
@@ -1253,7 +1259,7 @@
 		<div class="mobile-header">
 			{#if tabletLayout}
 				<button class="mobile-header-btn" class:active={!tabletNavHidden} onclick={() => setTabletNavHidden(!tabletNavHidden)}
-					title={tabletNavHidden ? 'Show side panel' : 'Hide side panel'} aria-label={tabletNavHidden ? 'Show side panel' : 'Hide side panel'} aria-pressed={!tabletNavHidden}>
+					title={tabletNavHidden ? $ui("ui.show_side_panel") : $ui("ui.hide_side_panel")} aria-label={tabletNavHidden ? $ui("ui.show_side_panel") : $ui("ui.hide_side_panel")} aria-pressed={!tabletNavHidden}>
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
 					</svg>
@@ -1262,7 +1268,7 @@
 			{#if tabletLayout && tabletNavHidden}
 				<!-- The hidden column has no title or back step to show. -->
 			{:else if $mobileView !== 'sidebar'}
-				<button class="mobile-header-btn" bind:this={mobileBackButton} onclick={mobileBack} aria-label="Go back">
+				<button class="mobile-header-btn" bind:this={mobileBackButton} onclick={mobileBack} aria-label={$ui("ui.go_back")}>
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M15 18l-6-6 6-6"/>
 					</svg>
@@ -1283,7 +1289,7 @@
 					{#if $mobileView === 'sidebar'}
 						HelixNotes
 					{:else}
-						{#if $viewMode === 'notebook'}{$activeNotebook?.name ?? 'Notebook'}{:else if $viewMode === 'tag' && $activeTag}<TagLabel name={$activeTag} size={16} />{:else if $viewMode === 'quickaccess'}Quick Access{:else if $viewMode === 'daily'}Daily Notes{:else if $viewMode === 'tasks'}Tasks{:else if $viewMode === 'trash'}Trash{:else}All Notes{/if}
+						{#if $viewMode === 'notebook'}{$activeNotebook?.name ?? 'Notebook'}{:else if $viewMode === 'tag' && $activeTag}<TagLabel name={$activeTag} size={16} />{:else if $viewMode === 'quickaccess'}{$ui("ui.quick_access")}{:else if $viewMode === 'daily'}{$ui("ui.daily_notes")}{:else if $viewMode === 'tasks'}{$ui("ui.tasks")}{:else if $viewMode === 'trash'}{$ui("ui.trash")}{:else}{$ui("ui.all_notes")}{/if}
 					{/if}
 				</span>
 				{#if $globalUpdateAvailable && $mobileView === 'sidebar'}
@@ -1294,7 +1300,7 @@
 			{/if}
 			<div class="mobile-header-actions">
 				{#if $mobileView === 'editor' || (tabletLayout && $activeNotePath)}
-					<button class="mobile-header-btn" class:active={$readOnly} disabled={isTrashedNote($activeNotePath, ownerVault)} onclick={() => ($readOnly = !$readOnly)} title={$readOnly ? 'Edit' : 'View'} aria-label={$readOnly ? 'Edit' : 'View'}>
+					<button class="mobile-header-btn" class:active={$readOnly} disabled={isTrashedNote($activeNotePath, ownerVault)} onclick={() => ($readOnly = !$readOnly)} title={$readOnly ? $ui("ui.edit") : $ui("ui.view")} aria-label={$readOnly ? $ui("ui.edit") : $ui("ui.view")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							{#if $readOnly}
 								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -1305,17 +1311,17 @@
 							{/if}
 						</svg>
 					</button>
-					<button class="mobile-header-btn" onclick={() => editor?.openNoteSearch()} title="Find in note" aria-label="Find in note">
+					<button class="mobile-header-btn" onclick={() => editor?.openNoteSearch()} title={$ui("ui.find_in_note")} aria-label={$ui("ui.find_in_note")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
 						</svg>
 					</button>
 					{#snippet secondaryNoteActions(inMenu: boolean)}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitemcheckbox' : undefined} aria-checked={inMenu ? !!$activeNote?.meta.pinned : undefined} class:active={$activeNote?.meta.pinned} onclick={() => { if ($activeNote) { $activeNote.meta.pinned = !$activeNote.meta.pinned; editor?.markEdited(); } }} title="Pin">
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitemcheckbox' : undefined} aria-checked={inMenu ? !!$activeNote?.meta.pinned : undefined} class:active={$activeNote?.meta.pinned} onclick={() => { if ($activeNote) { $activeNote.meta.pinned = !$activeNote.meta.pinned; editor?.markEdited(); } }} title={$ui("ui.pin")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M12 17v5"/><path d="M9 2h6l-1 7h4l-2 4H8l-2-4h4L9 2z"/>
 						</svg>
-						{#if inMenu}<span>Pin</span>{/if}
+						{#if inMenu}<span>{$ui("ui.pin")}</span>{/if}
 					</button>
 					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitemcheckbox' : undefined} aria-checked={inMenu ? isQuickAccess : undefined} class:active={isQuickAccess} onclick={async () => {
 						if (!noteRelativePath) return;
@@ -1325,55 +1331,55 @@
 							const qaNotes = await getQuickAccess(ownerVault!);
 							if (ownerIsCurrent()) $quickAccessPaths = qaNotes.map(n => n.relative_path);
 						} catch (e) { console.error('Quick access toggle failed:', e); }
-					}} title="Quick Access">
+					}} title={$ui("ui.quick_access")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill={isQuickAccess ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
 						</svg>
-						{#if inMenu}<span>Quick Access</span>{/if}
+						{#if inMenu}<span>{$ui("ui.quick_access")}</span>{/if}
 					</button>
 					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={outlineOpen} onclick={() => editor?.toggleOutlinePanel()}
-						title="Outline" aria-label="Outline" aria-expanded={outlineOpen} aria-controls={outlinePanelId || undefined}>
+						title={$ui("ui.outline")} aria-label={$ui("ui.outline")} aria-expanded={outlineOpen} aria-controls={outlinePanelId || undefined}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>
 						</svg>
-						{#if inMenu}<span>Outline</span>{/if}
+						{#if inMenu}<span>{$ui("ui.outline")}</span>{/if}
 					</button>
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.toggleHistoryPanel()} title="History">
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.toggleHistoryPanel()} title={$ui("ui.history")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
 						</svg>
-						{#if inMenu}<span>History</span>{/if}
+						{#if inMenu}<span>{$ui("ui.history")}</span>{/if}
 					</button>
 					{#if $appConfig?.enable_wiki_links}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.toggleGraphView()} title="Graph View">
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.toggleGraphView()} title={$ui("ui.graph_view")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/>
 							<line x1="8.5" y1="7.5" x2="15.5" y2="16.5"/><line x1="15.5" y1="7.5" x2="8.5" y2="16.5"/>
 						</svg>
-						{#if inMenu}<span>Graph View</span>{/if}
+						{#if inMenu}<span>{$ui("ui.graph_view")}</span>{/if}
 					</button>
 					{/if}
 					{#if $appConfig?.ai_provider}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.triggerAiMenu()} title="AI Actions">
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} onclick={() => editor?.triggerAiMenu()} title={$ui("ui.ai_actions")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M12 8V4l-2-2"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/>
 						</svg>
-						{#if inMenu}<span>AI Actions</span>{/if}
+						{#if inMenu}<span>{$ui("ui.ai_actions")}</span>{/if}
 					</button>
 					{/if}
 					{#if activeVaultConfig($appConfig)?.sync_provider === 'webdav'}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={$syncState.running} onclick={triggerSyncNow} disabled={$syncState.running} title={$syncState.error ? `Sync error: ${$syncState.error}` : ($syncState.running ? 'Syncing...' : 'Sync now')}>
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={$syncState.running} onclick={triggerSyncNow} disabled={$syncState.running} title={$syncState.error ? $ui("ui.sync_error", { value0: $syncState.error }) : ($syncState.running ? $ui("ui.syncing") : $ui("ui.sync_now"))}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:sync-spin={$syncState.running}>
 							<path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/>
 						</svg>
-						{#if inMenu}<span>{$syncState.running ? 'Syncing...' : $syncState.error ? 'Sync error: retry' : 'Sync now'}</span>{/if}
+						{#if inMenu}<span>{$syncState.running ? $ui("ui.syncing") : $syncState.error ? $ui("ui.sync_error_retry") : $ui("ui.sync_now")}</span>{/if}
 					</button>
 					{/if}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={$sourceMode} onclick={() => ($sourceMode = !$sourceMode)} title={$sourceMode ? 'Rich Editor' : 'Source Mode'}>
+					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={$sourceMode} onclick={() => ($sourceMode = !$sourceMode)} title={$sourceMode ? $ui("ui.rich_editor") : $ui("ui.source_mode")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
 						</svg>
-						{#if inMenu}<span>{$sourceMode ? 'Rich Editor' : 'Source Mode'}</span>{/if}
+						{#if inMenu}<span>{$sourceMode ? $ui("ui.rich_editor") : $ui("ui.source_mode")}</span>{/if}
 					</button>
 					{/snippet}
 					{#if tabletLayout}
@@ -1381,13 +1387,13 @@
 					{:else}
 						<div class="mobile-note-menu-wrapper" bind:this={mobileNoteMenuWrapper}>
 							<button class="mobile-header-btn" class:active={mobileNoteMenuOpen} type="button" bind:this={mobileNoteMenuTrigger}
-								title="More note actions" aria-label="More note actions" aria-haspopup="menu" aria-expanded={mobileNoteMenuOpen} aria-controls="mobile-note-menu" onclick={toggleMobileNoteMenu}>
+								title={$ui("ui.more_note_actions")} aria-label={$ui("ui.more_note_actions")} aria-haspopup="menu" aria-expanded={mobileNoteMenuOpen} aria-controls="mobile-note-menu" onclick={toggleMobileNoteMenu}>
 								<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 									<circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
 								</svg>
 							</button>
 							{#if mobileNoteMenuOpen}
-								<div class="mobile-note-menu" id="mobile-note-menu" bind:this={mobileNoteMenu} role="menu" aria-label="Note actions" tabindex="-1"
+								<div class="mobile-note-menu" id="mobile-note-menu" bind:this={mobileNoteMenu} role="menu" aria-label={$ui("ui.note_actions")} tabindex="-1"
 									onkeydown={handleMobileNoteMenuKeydown} onclickcapture={() => closeMobileNoteMenu(true)}>
 									{@render secondaryNoteActions(true)}
 								</div>
@@ -1396,13 +1402,13 @@
 					{/if}
 				{/if}
 				{#if tabletLayout || $mobileView !== 'editor'}
-					<button class="mobile-header-btn" onclick={() => ($showSearch = true)} title="Search">
+					<button class="mobile-header-btn" onclick={() => ($showSearch = true)} title={$ui("ui.search")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="11" cy="11" r="8" />
 							<line x1="21" y1="21" x2="16.65" y2="16.65" />
 						</svg>
 					</button>
-						<button class="mobile-header-btn" onclick={handleDailyNote} title="Daily Note">
+						<button class="mobile-header-btn" onclick={handleDailyNote} title={$ui("ui.daily_note")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
 							<line x1="16" y1="2" x2="16" y2="6" />
@@ -1410,14 +1416,14 @@
 							<line x1="3" y1="10" x2="21" y2="10" />
 						</svg>
 					</button>
-					<button class="mobile-header-btn" onclick={() => ($showInfo = true)} title="Info">
+					<button class="mobile-header-btn" onclick={() => ($showInfo = true)} title={$ui("ui.info")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="12" cy="12" r="10" />
 							<line x1="12" y1="16" x2="12" y2="12" />
 							<line x1="12" y1="8" x2="12.01" y2="8" />
 						</svg>
 					</button>
-					<button class="mobile-header-btn" onclick={() => ($showSettings = true)} title="Settings">
+					<button class="mobile-header-btn" onclick={() => ($showSettings = true)} title={$ui("ui.settings")}>
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="12" cy="12" r="3" />
 							<path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
@@ -1449,12 +1455,12 @@
 			<div class="focus-topbar" class:macos={isMac} onmousedown={(e) => { if (!(e.target as HTMLElement).closest('button')) appWindow.startDragging(); }}>
 				<span class="focus-title">{$activeNote?.meta.title || 'Untitled'}</span>
 				<div class="focus-controls">
-					<button class="focus-btn focus-active" onclick={() => ($focusMode = false)} title="Exit focus mode (Escape)">
+					<button class="focus-btn focus-active" onclick={() => ($focusMode = false)} title={$ui("ui.exit_focus_mode_escape")}>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"/>
 						</svg>
 					</button>
-					<button class="focus-btn" class:focus-active={$readOnly} onclick={() => ($readOnly = !$readOnly)} title={$readOnly ? 'Switch to Edit Mode' : 'Switch to View Mode'}>
+					<button class="focus-btn" class:focus-active={$readOnly} onclick={() => ($readOnly = !$readOnly)} title={$readOnly ? $ui("ui.switch_to_edit_mode") : $ui("ui.switch_to_view_mode")}>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							{#if $readOnly}
 								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -1467,13 +1473,13 @@
 						</svg>
 					</button>
 					{#if !isMac}
-					<button class="focus-btn" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.minimize()} title="Minimize">
+					<button class="focus-btn" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.minimize()} title={$ui("ui.minimize")}>
 						<svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
 					</button>
-					<button class="focus-btn" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.toggleMaximize()} title="Maximize">
+					<button class="focus-btn" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.toggleMaximize()} title={$ui("ui.maximize")}>
 						<svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
 					</button>
-					<button class="focus-btn focus-close" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.close()} title="Close">
+					<button class="focus-btn focus-close" onmousedown={(e) => e.stopPropagation()} onclick={() => appWindow.close()} title={$ui("ui.close")}>
 						<svg width="10" height="10" viewBox="0 0 10 10"><line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
 					</button>
 					{/if}
@@ -1500,7 +1506,7 @@
 					<ResizeHandle onResize={handleNotelistResize} />
 				{:else}
 					<div class="notelist-restore-panel">
-						<button class="notelist-restore-btn" onclick={revealNoteList} title={`Show notes list (${isMac ? '⌘' : 'Ctrl'}+Shift+\\)`} aria-label="Show notes list">
+						<button class="notelist-restore-btn" onclick={revealNoteList} title={$ui("ui.show_notes_list_shift", { value0: isMac ? '⌘' : 'Ctrl' })} aria-label={$ui("ui.show_notes_list")}>
 							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<line x1="4" y1="6" x2="16" y2="6" />
 								<line x1="4" y1="12" x2="16" y2="12" />
@@ -1519,7 +1525,7 @@
 						<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
 						</svg>
-						<p>Select a task to open its note</p>
+						<p>{$ui("ui.select_a_task_to_open_its_note")}</p>
 					</div>
 				{/if}
 			</div>

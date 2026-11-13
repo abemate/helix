@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t as ui, label as uiLabel } from '$lib/i18n';
 	import { showCommandPalette, showSearch, theme, sourceMode, viewMode, activeNotebook, activeTag } from '$lib/stores/app';
 	import { setTheme, reindex } from '$lib/api';
 	import { darkThemes } from '$lib/platform';
@@ -152,7 +153,7 @@
 
 	let filteredCommands = $derived(
 		query.trim()
-			? commands.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
+			? commands.filter((c) => $uiLabel(c.label).toLocaleLowerCase().includes(query.toLocaleLowerCase()) || c.label.toLowerCase().includes(query.toLowerCase()))
 			: commands
 	);
 
@@ -209,7 +210,7 @@
 				<input
 					bind:this={inputEl}
 					type="text"
-					placeholder="Type a command..."
+					placeholder={$ui("ui.type_a_command")}
 					bind:value={query}
 					onkeydown={handleKeydown}
 				/>
@@ -223,7 +224,7 @@
 						onclick={() => cmd.action()}
 						onmouseenter={() => (selectedIndex = i)}
 					>
-						<span class="cmd-label">{cmd.label}</span>
+						<span class="cmd-label">{$uiLabel(cmd.label)}</span>
 						{#if cmd.shortcut}
 							<span class="cmd-shortcut">{cmd.shortcut}</span>
 						{/if}

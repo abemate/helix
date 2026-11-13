@@ -164,10 +164,13 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 - External `.md` viewer mode with import-to-vault flow
 - PDF preview, Obsidian import, "Show in File Manager"
 - AI writing tools (Ollama / OpenAI-compatible / Anthropic / OpenAI)
+- [Provider model discovery and opt-in image input](docs/ai-models-and-images.md) (1.3.8, unreleased)
 - **Optional WebDAV sync** to your own server (Nextcloud, ownCloud, a NAS): manual or automatic, with keep-both conflict copies
 - Version history with main-area diffs and rendered read-only snapshots, automatic backups
 - Multi-window, file associations, focus mode, view mode
 - Themes (light, dark, and built-in palettes), accent colors, fonts including bundled Ubuntu and Ubuntu Mono, 80-200% interface scale
+- [Daily-note templates](docs/daily-note-templates.md), with per-vault Markdown import/editing and date/title placeholders, applied only to new notes
+- Interface languages: English, Russian, Dutch, German, Spanish, French, Italian, Portuguese (Portugal) and Portuguese (Brazil), with live switching
 - Local plain-text files, no company cloud
 
 ### Version history
@@ -191,6 +194,12 @@ Note writes run off the UI thread and replace the file atomically. Unchanged not
 With **Close to tray** enabled and a tray icon available, closing the main window hides it after saving. With the setting off, closing the main window closes the application. The close-to-tray setting takes effect immediately; enabling the tray icon itself requires a restart. Explicit **Quit** exits rather than hiding to the tray.
 
 Full documentation: [helixnotes.com/docs](https://helixnotes.com/docs.html)
+
+## Contributing translations
+
+Want HelixNotes in your language? Copy the [English JSON catalog](src/lib/i18n/locales/en.json), translate its values, and attach the file to a GitLab issue using the **Translation** template. No build or programming experience is required.
+
+See the [translation guide and example file](docs/translations/README.md) for placeholders, plural forms and submission instructions.
 
 ## Tech Stack
 

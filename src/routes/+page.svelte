@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
+	import { tr } from '$lib/i18n';
 	import { appConfig, vaultReady, theme } from '$lib/stores/app';
 	import { getAppConfig, openVault, restoreExternalVault, setFontSize } from '$lib/api';
 	import { darkThemes, isIOS, isMobile } from '$lib/platform';
@@ -168,7 +169,7 @@
 				} else {
 					noteWindowPath = null;
 					noteWindowVault = null;
-					startupVaultError = 'This note window’s vault is no longer available. Choose a vault to continue.';
+					startupVaultError = tr('startup.vaultUnavailable');
 				}
 			}
 			$appConfig = config;
@@ -285,7 +286,7 @@
 					$vaultReady = true;
 				} catch (e) {
 					$vaultReady = false;
-					startupVaultError = `Could not open the last vault: ${String(e)}`;
+					startupVaultError = tr('startup.openFailed', { error: String(e) });
 					// A saved path is not proof that the vault was initialized.
 					// Do not let the picker navigate back into a failed startup.
 					$appConfig = {

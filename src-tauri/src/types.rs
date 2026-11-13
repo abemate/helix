@@ -184,6 +184,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub active_bookmark_id: Option<String>,
     pub theme: String,
+    /// Device-local interface preference; never written into vault data.
+    pub language: String,
     /// Themes used when `theme` is "system": the frontend picks one by the OS color scheme.
     /// Default to the plain "light"/"dark" schemes so existing configs keep their behavior.
     #[serde(default = "default_system_light_theme")]
@@ -276,6 +278,10 @@ pub struct AppConfig {
     pub openai_compatible_api_key: Option<String>,
     #[serde(default = "default_ai_model")]
     pub ai_model: String,
+    pub anthropic_model: Option<String>,
+    pub openai_model: Option<String>,
+    pub ollama_model: Option<String>,
+    pub openai_compatible_model: Option<String>,
     #[serde(default)]
     pub ai_writing_style: Option<String>,
     #[serde(default)]
@@ -368,6 +374,7 @@ impl Default for AppConfig {
             active_vault: None,
             active_bookmark_id: None,
             theme: "system".to_string(),
+            language: "system".to_string(),
             system_light_theme: default_system_light_theme(),
             system_dark_theme: default_system_dark_theme(),
             accent_color: None,
@@ -412,6 +419,10 @@ impl Default for AppConfig {
             openai_compatible_base_url: None,
             openai_compatible_api_key: None,
             ai_model: default_ai_model(),
+            anthropic_model: None,
+            openai_model: None,
+            ollama_model: None,
+            openai_compatible_model: None,
             ai_writing_style: None,
             default_view_mode: false,
             new_notes_in_source_mode: false,
@@ -649,6 +660,25 @@ mod startup_view_tests {
             serde_json::from_str::<StartupView>("\"future-view\"").unwrap(),
             StartupView::All
         );
+    }
+
+    #[test]
+    fn existing_configs_default_system_language() {
+        let mut value = serde_json::to_value(AppConfig::default()).unwrap();
+        value.as_object_mut().unwrap().remove("language");
+        let config: AppConfig = serde_json::from_value(value).unwrap();
+        assert_eq!(config.language, "system");
+        for language in crate::i18n::supported_languages()
+            .iter()
+            .map(String::as_str)
+            .chain(["system"])
+        {
+            let mut config = config.clone();
+            config.language = language.to_string();
+            let roundtrip: AppConfig =
+                serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+            assert_eq!(roundtrip.language, language);
+        }
     }
 
     #[test]

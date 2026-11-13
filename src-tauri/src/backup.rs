@@ -21,12 +21,18 @@ const MAX_NAME_BYTES: usize = 256 * 1024 * 1024;
 const MAX_PATH_COMPONENTS: usize = 64;
 const MANIFEST: &str = ".helixnotes-backup.json";
 
+#[cfg(test)]
+mod daily_template_tests;
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct BackupManifest {
     version: u32,
     vault: String,
     attachments: bool,
+    /// None is a pre-template backup: leave the current template alone on restore.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    daily_template: Option<bool>,
 }
 
 fn vault_id(vault: &Path) -> Result<String, String> {
@@ -69,7 +75,10 @@ fn excluded_path(path: &Path, vault: &Path, backup_dir: &Path, attachments: bool
     let first = parts.next().expect("non-root entry").as_os_str();
     if first == ".helixnotes" {
         return match parts.next() {
-            None => !attachments,
+            None => false,
+            Some(part) if part.as_os_str() == "daily-template.md" && parts.next().is_none() => {
+                false
+            }
             Some(part) if part.as_os_str() == "attachments" && attachments => {
                 parts.any(|part| part.as_os_str().to_string_lossy().starts_with('.'))
             }
@@ -122,6 +131,7 @@ pub fn create_backup(
         return Err("Backup directory must not be the vault root".to_string());
     }
     let id = vault_id(&vault)?;
+    let has_template = crate::vault::daily_template::read(vault_path)?.is_some();
     let now = Utc::now();
     let timestamp = now.format("%Y-%m-%dT%H-%M-%S").to_string();
     let filename = format!("helixnotes-backup-{timestamp}-{id}-{}.zip", Uuid::new_v4());
@@ -142,6 +152,7 @@ pub fn create_backup(
                 version: 1,
                 vault: id,
                 attachments: include_attachments,
+                daily_template: Some(has_template),
             },
         )
         .map_err(|e| e.to_string())?;
@@ -372,6 +383,7 @@ fn install_staged(
     previous: &Path,
     backup_dir: &Path,
     attachments: bool,
+    template: Option<bool>,
 ) -> Result<(), String> {
     let nested = backup_dir
         .strip_prefix(vault)
@@ -396,6 +408,10 @@ fn install_staged(
     let attachments_path = vault.join(".helixnotes/attachments");
     let mut displaced_attachments = false;
     let mut installed_attachments = false;
+    let template_path = vault.join(crate::vault::daily_template::RELATIVE_PATH);
+    let previous_template = previous.join("daily-template.md");
+    let mut displaced_template = false;
+    let mut installed_template = false;
     let operation = (|| -> io::Result<()> {
         fs::create_dir(&previous_entries)?;
         fs::create_dir(&held_history)?;
@@ -447,6 +463,20 @@ fn install_staged(
             fs::rename(contents.join(".helixnotes/attachments"), &attachments_path)?;
             installed_attachments = true;
         }
+        if let Some(enabled) = template {
+            if fs::symlink_metadata(&template_path).is_ok() {
+                fs::rename(&template_path, &previous_template)?;
+                displaced_template = true;
+            }
+            if enabled {
+                fs::create_dir_all(vault.join(".helixnotes"))?;
+                fs::rename(
+                    contents.join(crate::vault::daily_template::RELATIVE_PATH),
+                    &template_path,
+                )?;
+                installed_template = true;
+            }
+        }
         if let Some(relative) = nested {
             if held_output {
                 let destination = vault.join(relative);
@@ -489,6 +519,11 @@ fn install_staged(
                 failures.join("; ")
             ));
         }
+        if installed_template {
+            if let Err(e) = remove_entry(&template_path) {
+                failures.push(format!("remove new daily template: {e}"));
+            }
+        }
         if installed_attachments {
             if let Err(e) = remove_entry(&attachments_path) {
                 failures.push(format!("remove new attachments: {e}"));
@@ -512,6 +547,11 @@ fn install_staged(
         for name in displaced {
             if let Err(e) = fs::rename(previous_entries.join(&name), vault.join(&name)) {
                 failures.push(format!("restore original {:?}: {e}", name));
+            }
+        }
+        if displaced_template {
+            if let Err(e) = fs::rename(&previous_template, &template_path) {
+                failures.push(format!("restore daily template: {e}"));
             }
         }
         if displaced_attachments {
@@ -634,6 +674,15 @@ pub fn restore_backup(
                 Some(component) if component.as_os_str() == "attachments" => {
                     legacy_attachments = true;
                 }
+                Some(component)
+                    if component.as_os_str() == "daily-template.md"
+                        && parts.next().is_none()
+                        && !directory =>
+                {
+                    if item.size() > crate::vault::daily_template::MAX_BYTES as u64 {
+                        return Err("Daily template exceeds the 256 KiB limit".into());
+                    }
+                }
                 _ => return Err(format!("Archive contains unsupported app metadata: {name}")),
             }
         } else if first.as_os_str().to_string_lossy().starts_with('.')
@@ -710,10 +759,27 @@ pub fn restore_backup(
         }
     }
     // An archive holding only its manifest would replace the vault with nothing.
-    if seen.keys().all(|entry| entry == Path::new(MANIFEST)) {
+    if seen.keys().all(|entry| {
+        entry == Path::new(MANIFEST)
+            || entry == Path::new(".helixnotes")
+            || entry == Path::new(crate::vault::daily_template::RELATIVE_PATH)
+    }) {
         return Err(
             "This backup contains no notes, so restoring it would empty the vault".to_string(),
         );
+    }
+    let has_template = seen.contains_key(Path::new(crate::vault::daily_template::RELATIVE_PATH));
+    let template = match manifest.as_ref().and_then(|meta| meta.daily_template) {
+        Some(enabled) if enabled != has_template => {
+            return Err("Daily template does not match the backup manifest".into())
+        }
+        Some(enabled) => Some(enabled),
+        None => has_template.then_some(true),
+    };
+    if has_template {
+        let file = File::open(contents.join(crate::vault::daily_template::RELATIVE_PATH))
+            .map_err(|e| e.to_string())?;
+        crate::vault::daily_template::read_from(file)?;
     }
     let attachments = if let Some(meta) = manifest {
         if meta.version != 1
@@ -736,13 +802,21 @@ pub fn restore_backup(
                 return Err("Cannot replace attachments containing the backup output".to_string());
             }
         }
+    }
+    if attachments || template.is_some() {
         let internals = vault.join(".helixnotes");
         if fs::symlink_metadata(&internals).is_ok_and(|meta| !meta.file_type().is_dir()) {
             return Err("Vault app metadata directory is not a real directory".to_string());
         }
     }
+    if template.is_some()
+        && fs::symlink_metadata(vault.join(crate::vault::daily_template::RELATIVE_PATH))
+            .is_ok_and(|meta| meta.file_type().is_dir())
+    {
+        return Err("Daily template destination must not be a directory".into());
+    }
     drop(archive);
-    let result = install_staged(&vault, &contents, &previous, &output, attachments);
+    let result = install_staged(&vault, &contents, &previous, &output, attachments, template);
     if result
         .as_ref()
         .is_err_and(|message| message.contains("rollback incomplete"))

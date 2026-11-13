@@ -7,7 +7,7 @@
 // conflict copies so nothing is ever lost.
 //
 // Synced set: every `*.md` in the vault tree, `.helixnotes/attachments/`,
-// `.helixnotes/notebook_icons.json`, and `.helixnotes/tag_styles.json`. Search indexes,
+// `.helixnotes/notebook_icons.json`, `.helixnotes/tag_styles.json` and the daily template. Search indexes,
 // trash, history, other metadata, and the manifest itself remain local-only.
 
 use crate::state::AppState;
@@ -21,6 +21,9 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 use walkdir::WalkDir;
+
+#[cfg(test)]
+mod daily_template_tests;
 
 /// Folder listings requested at once unless the settings say otherwise. A handful hides most of
 /// the round-trip time and stays polite to a small server.
@@ -252,7 +255,7 @@ fn conflict_relpath(relpath: &str, stamp: &str) -> String {
 // title. A note without a title of its own already takes it from the file name.
 fn conflict_copy(relpath: &str, bytes: Vec<u8>, stamp: &str) -> Vec<u8> {
     use crate::vault::{frontmatter, operations};
-    if !relpath.ends_with(".md") {
+    if !relpath.ends_with(".md") || relpath.starts_with(".helixnotes/") {
         return bytes;
     }
     let Ok(raw) = std::str::from_utf8(&bytes) else {
@@ -335,7 +338,7 @@ struct LocalFile {
 }
 
 /// The synced set: `*.md` anywhere outside `.helixnotes/`, everything under
-/// `.helixnotes/attachments/`, plus notebook icon and tag style mappings. Applied to BOTH local
+/// `.helixnotes/attachments/`, plus the daily template, notebook icon and tag style mappings. Applied to BOTH local
 /// and remote so pointing at a folder with unrelated files never imports them.
 fn is_synced_relpath(rel: &str) -> bool {
     // On a case-insensitive disk `.HelixNotes/history/x.md` lands in the app's own folder, so any
@@ -350,6 +353,7 @@ fn is_synced_relpath(rel: &str) -> bool {
         rel.starts_with(".helixnotes/attachments/")
             || rel == ".helixnotes/notebook_icons.json"
             || rel == ".helixnotes/tag_styles.json"
+            || rel == crate::vault::daily_template::RELATIVE_PATH
     } else {
         rel.ends_with(".md")
     }

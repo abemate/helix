@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t as ui } from '$lib/i18n';
 	import type { SourceController } from '$lib/editor/source/controller';
 
 	let { controller, readonly = false, numbers = false, visible = true, mobile = false }: {
@@ -23,6 +24,7 @@
 		};
 	});
 	$effect(() => { controller.configure(readonly, numbers); });
+	$effect(() => { controller.setLabels($ui('source.placeholder'), $ui('source.label')); });
 	$effect(() => { if (visible) controller.view?.requestMeasure(); });
 </script>
 

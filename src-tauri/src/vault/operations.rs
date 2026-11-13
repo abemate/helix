@@ -1132,8 +1132,10 @@ pub fn create_daily_note(
     };
 
     let dir = Path::new(vault_path).join("Daily");
-    if fs::symlink_metadata(&dir).is_err() {
-        fs::create_dir(&dir).map_err(|e| e.to_string())?;
+    match fs::create_dir(&dir) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(error.to_string()),
     }
     let dir = ensure_vault_content_dir(vault_path, &dir)?;
     let file_path = dir.join(format!("{}.md", date_str));
@@ -1162,14 +1164,23 @@ pub fn create_daily_note(
         modified: now,
     };
 
-    let raw = frontmatter::update_note_raw(&meta, "\n");
-    match fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&file_path)
-    {
-        Ok(mut file) => file.write_all(raw.as_bytes()).map_err(|e| e.to_string())?,
-        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+    let body = super::daily_template::read(vault_path)?
+        .filter(|raw| super::daily_template::is_enabled(raw))
+        .map(|raw| super::daily_template::expand(&raw, &date_str, &meta.title))
+        .unwrap_or_else(|| "\n".to_string());
+    // A template owns its body layout: do not insert another heading or copy its metadata.
+    let raw = format!("{}{}", frontmatter::serialize_frontmatter(&meta), body);
+    let mut temporary = tempfile::Builder::new()
+        .prefix(".helixnotes-daily-")
+        .tempfile_in(&dir)
+        .map_err(|e| e.to_string())?;
+    temporary
+        .write_all(raw.as_bytes())
+        .map_err(|e| e.to_string())?;
+    temporary.as_file().sync_all().map_err(|e| e.to_string())?;
+    match temporary.persist_noclobber(&file_path) {
+        Ok(_) => {}
+        Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => {
             if fs::symlink_metadata(&file_path)
                 .map_err(|e| e.to_string())?
                 .file_type()
@@ -1180,7 +1191,7 @@ pub fn create_daily_note(
             ensure_note_path(vault_path, &file_path)?;
             return read_note_entry(&file_path, vault_root);
         }
-        Err(error) => return Err(error.to_string()),
+        Err(error) => return Err(error.error.to_string()),
     }
 
     let relative = file_path

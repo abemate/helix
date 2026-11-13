@@ -1,3 +1,5 @@
+import type { Language } from './i18n/core';
+
 export interface NoteMeta {
   id: string;
   title: string;
@@ -110,6 +112,7 @@ export interface AppConfig {
   active_vault: string | null;
   active_bookmark_id?: string | null;
   theme: string;
+  language?: Language;
   system_light_theme: string;
   system_dark_theme: string;
   accent_color: string | null;
@@ -154,6 +157,10 @@ export interface AppConfig {
   openai_compatible_base_url: string | null;
   openai_compatible_api_key: string | null;
   ai_model: string;
+  anthropic_model?: string | null;
+  openai_model?: string | null;
+  ollama_model?: string | null;
+  openai_compatible_model?: string | null;
   ai_writing_style: string | null;
   default_view_mode: boolean;
   new_notes_in_source_mode: boolean;
