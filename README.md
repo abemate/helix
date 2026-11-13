@@ -1,7 +1,7 @@
 # HelixNotes
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://gitlab.com/ArkHost/HelixNotes/-/blob/main/LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.3.6-green)](https://gitlab.com/ArkHost/HelixNotes/-/releases/v1.3.6)
+[![Latest Release](https://img.shields.io/badge/release-v1.3.7-green)](https://gitlab.com/ArkHost/HelixNotes/-/releases/v1.3.7)
 [![Website](https://img.shields.io/badge/web-helixnotes.com-purple)](https://helixnotes.com)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20Android-lightgrey)]()
 
@@ -10,15 +10,26 @@ A local markdown note-taking app built with Tauri, SvelteKit, and Rust.
 Your notes are stored as standard Markdown files on your local filesystem.
 No cloud, no lock-in.
 
-## Download (v1.3.6)
+## Download (v1.3.7)
 
 ### Linux
+
+#### Flatpak
+
+Install from the signed ArkHost repository:
+
+```bash
+flatpak install --user https://repo.arkhost.com/flatpak/HelixNotes.flatpakref
+flatpak run com.helixnotes.HelixNotes
+```
+
+Install [Flatpak](https://flatpak.org/setup/) first if it is not already available on your system.
 
 #### AppImage
 
 The AppImage works only on Fedora 43+, Arch Linux, and openSUSE Tumbleweed (x86_64).
 
-[Download AppImage](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_amd64.AppImage)
+[Download AppImage](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_amd64.AppImage)
 
 #### Distro-specific packages
 
@@ -108,14 +119,16 @@ sudo eopkg it helixnotes
 
 #### Manual package downloads
 
-- [.deb](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_amd64.deb) (Ubuntu 22.04+)
-- [.rpm](https://download.helixnotes.com/releases/v1.3.6/HelixNotes-1.3.6-1.x86_64.rpm)
+- [.deb](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_amd64.deb) (Ubuntu 22.04+)
+- [.rpm](https://download.helixnotes.com/releases/v1.3.7/HelixNotes-1.3.7-1.x86_64.rpm)
 
 ### Windows
 
-[Download Installer](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_x64-setup.exe) (Windows 10/11)
+[Download Installer](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_x64-setup.exe) (Windows 10/11)
 
-### macOS
+### macOS (v1.3.6)
+
+The macOS 1.3.7 release is delayed. Version 1.3.6 remains available below.
 
 [Download .dmg (Apple Silicon)](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_aarch64.dmg) (M-series Macs)
 
@@ -129,7 +142,7 @@ xattr -cr /Applications/HelixNotes.app
 
 ### Android
 
-[Download APK](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_android.apk)
+[Download APK](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_android.apk)
 
 ---
 
@@ -137,7 +150,8 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 
 ## Features
 
-- Markdown editor with toolbar, slash commands, source mode, code highlighting
+- Markdown editor with toolbar, slash commands, source mode, code highlighting, Find and Replace
+- Side-by-side image grids, image reordering and hover text
 - **Tasks view**: aggregate `- [ ]` checklists from across all notes, set priority and due dates, filter Today or Overdue tasks, work in a list or a calendar (drag a task to reschedule)
 - `[[Wiki-links]]` and graph view
 - Full-text search (Tantivy), CJK-aware for Chinese, Japanese, and Korean
@@ -153,7 +167,7 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 - **Optional WebDAV sync** to your own server (Nextcloud, ownCloud, a NAS): manual or automatic, with keep-both conflict copies
 - Version history with main-area diffs and rendered read-only snapshots, automatic backups
 - Multi-window, file associations, focus mode, view mode
-- Themes (light, dark, and 14 palettes), accent colors, fonts including bundled Ubuntu and Ubuntu Mono, 80-200% interface scale
+- Themes (light, dark, and built-in palettes), accent colors, fonts including bundled Ubuntu and Ubuntu Mono, 80-200% interface scale
 - Local plain-text files, no company cloud
 
 ### Version history
