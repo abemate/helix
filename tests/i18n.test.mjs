@@ -220,7 +220,7 @@ test('the language selector renders its popup in the app rather than delegating 
   assert.doesNotMatch(source, /<select[^>]+id="interface-language"/);
   const select = await readFile(new URL('../src/lib/components/ThemedSelect.svelte', import.meta.url), 'utf8');
   for (const selector of ['select-trigger', 'select-menu', 'select-option']) {
-    const rule = select.match(new RegExp(`\\.${selector}\\s*\\{([^}]+)\\}`))[1];
+    const rule = select.match(new RegExp(`\\n\\t\\.${selector}\\s*\\{([^}]+)\\}`))[1];
     assert.match(rule, /background:\s*var\(--bg-secondary\)/, selector);
     assert.match(rule, /color:\s*var\(--text-primary\)/, selector);
   }

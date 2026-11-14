@@ -1176,5 +1176,21 @@
   "ai.vision.none": "Nessuna immagine locale compatibile in questa nota.",
   "ai.vision.privacy": "{count, plural, one {# immagine selezionata verrà inviata} other {# immagini selezionate verranno inviate}} a {provider} con questa richiesta. Le immagini possono aumentare il consumo di token e il costo.",
   "ai.vision.describe": "Descrivi immagini selezionate",
-  "ai.mediaMismatch": "L''IA ha rimosso o duplicato segnaposto multimediali. Il risultato non è stato applicato. Riprova o copia il testo manualmente."
+  "ai.mediaMismatch": "L''IA ha rimosso o duplicato segnaposto multimediali. Il risultato non è stato applicato. Riprova o copia il testo manualmente.",
+  "editorMode.label": "Modalità editor",
+  "editorMode.rich": "Testo formattato",
+  "editorMode.live": "Anteprima dal vivo",
+  "editorMode.source": "Sorgente Markdown",
+  "livePreview.toggleTask": "Cambia lo stato dell’attività",
+  "livePreview.editImage": "Modifica il sorgente dell’immagine",
+  "vaultSwitcher.label": "Cambia archivio",
+  "vaultSwitcher.add": "Aggiungi archivio…",
+  "vaultSwitcher.empty": "Nessun archivio salvato",
+  "vaultSwitcher.switching": "Cambio archivio…",
+  "vaultSwitcher.failed": "Impossibile aprire l’archivio: {error}",
+  "vaultSwitcher.blocked": "La nota attuale non è stata salvata o è occupata. Risolvi l’errore di salvataggio o attendi la fine dell’operazione e riprova.",
+  "vaultSwitcher.stale": "L’archivio attivo è cambiato. Riapri questo menu e riprova.",
+  "editorMode.newNotes": "Editor delle nuove note",
+  "editorMode.newNotesHelp": "Scegli l’editor per le nuove note vuote. Le note esistenti non cambiano.",
+  "editorMode.saveFailed": "Impossibile salvare la preferenza dell’editor: {error}"
 }

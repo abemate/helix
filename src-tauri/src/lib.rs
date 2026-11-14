@@ -229,6 +229,7 @@ pub fn run() {
             commands::set_tag_style,
             commands::import_tag_icon,
             commands::set_general_settings,
+            commands::set_new_note_editor_mode,
             commands::get_quick_access,
             commands::add_quick_access,
             commands::remove_quick_access,

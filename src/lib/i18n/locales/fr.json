@@ -1176,5 +1176,21 @@
   "ai.vision.none": "Aucune image locale compatible dans cette note.",
   "ai.vision.privacy": "{count, plural, one {# image sélectionnée sera envoyée} other {# images sélectionnées seront envoyées}} à {provider} avec cette requête. Les images peuvent augmenter la consommation de jetons et le coût.",
   "ai.vision.describe": "Décrire les images sélectionnées",
-  "ai.mediaMismatch": "L''IA a supprimé ou dupliqué des marqueurs de médias. Le résultat n''a pas été appliqué. Réessayez ou copiez le texte manuellement."
+  "ai.mediaMismatch": "L''IA a supprimé ou dupliqué des marqueurs de médias. Le résultat n''a pas été appliqué. Réessayez ou copiez le texte manuellement.",
+  "editorMode.label": "Mode de l’éditeur",
+  "editorMode.rich": "Texte enrichi",
+  "editorMode.live": "Aperçu en direct",
+  "editorMode.source": "Source Markdown",
+  "livePreview.toggleTask": "Changer l’état de la tâche",
+  "livePreview.editImage": "Modifier la source de l’image",
+  "vaultSwitcher.label": "Changer de coffre",
+  "vaultSwitcher.add": "Ajouter un coffre…",
+  "vaultSwitcher.empty": "Aucun coffre enregistré",
+  "vaultSwitcher.switching": "Changement de coffre…",
+  "vaultSwitcher.failed": "Impossible d’ouvrir le coffre : {error}",
+  "vaultSwitcher.blocked": "La note actuelle n’a pas pu être enregistrée ou est occupée. Corrigez l’erreur d’enregistrement ou attendez la fin de l’opération, puis réessayez.",
+  "vaultSwitcher.stale": "Le coffre actif a changé. Rouvrez ce menu et réessayez.",
+  "editorMode.newNotes": "Éditeur des nouvelles notes",
+  "editorMode.newNotesHelp": "Choisissez l’éditeur des nouvelles notes vides. Les notes existantes restent inchangées.",
+  "editorMode.saveFailed": "Impossible d’enregistrer la préférence de l’éditeur : {error}"
 }

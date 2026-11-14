@@ -143,6 +143,14 @@ pub enum StartupView {
     All,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NewNoteEditorMode {
+    Rich,
+    Live,
+    Source,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolbarLayout {
     pub main: Vec<String>,
@@ -288,6 +296,9 @@ pub struct AppConfig {
     pub default_view_mode: bool,
     #[serde(default)]
     pub new_notes_in_source_mode: bool,
+    /// None migrates the legacy boolean without changing existing Source preferences.
+    #[serde(default, deserialize_with = "lenient_option")]
+    pub new_note_editor_mode: Option<NewNoteEditorMode>,
     #[serde(default)]
     pub show_tray_icon: bool,
     #[serde(default)]
@@ -426,6 +437,7 @@ impl Default for AppConfig {
             ai_writing_style: None,
             default_view_mode: false,
             new_notes_in_source_mode: false,
+            new_note_editor_mode: None,
             show_tray_icon: false,
             close_to_tray: false,
             enable_wiki_links: true,

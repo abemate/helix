@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Language } from './i18n/core';
+import type { EditorMode } from './editor/mode';
 import type { ExternalNoteReference } from "./editor/externalNote";
 import type {
   AppConfig,
@@ -19,22 +20,24 @@ import type {
   BackupEntry,
   VersionEntry,
   TaskItem,
-  ExternalVaultResult,
+  VaultIdentity,
   StartupView,
   ToolbarLayout,
   PendingOpenFile,
 } from "./types";
 
-export async function openVault(path: string): Promise<void> {
-  return invoke("open_vault", { path });
+// Activation returns the committed configuration in the same IPC response. A second
+// config read must not fail after the native vault has already changed.
+export async function openVault(path: string, options: { existing?: boolean; expected?: VaultIdentity } = {}): Promise<AppConfig> {
+  return invoke("open_vault", { path, requireExisting: options.existing ?? false, expected: options.expected ?? null });
 }
 
-export async function chooseExternalVault(): Promise<ExternalVaultResult | null> {
+export async function chooseExternalVault(): Promise<AppConfig | null> {
   return invoke("choose_external_vault");
 }
 
-export async function restoreExternalVault(bookmarkId: string): Promise<ExternalVaultResult> {
-  return invoke("restore_external_vault", { bookmarkId });
+export async function restoreExternalVault(bookmarkId: string, expected?: VaultIdentity): Promise<AppConfig> {
+  return invoke("restore_external_vault", { bookmarkId, expected: expected ?? null });
 }
 
 export async function removeVault(path: string, bookmarkId?: string | null): Promise<void> {
@@ -369,6 +372,10 @@ export async function importTagIcon(
   data: number[],
 ): Promise<TagStyle> {
   return invoke("import_tag_icon", { vaultPath, tag, name, data });
+}
+
+export async function setNewNoteEditorMode(mode: EditorMode): Promise<void> {
+  return invoke('set_new_note_editor_mode', { mode });
 }
 
 export async function setGeneralSettings(

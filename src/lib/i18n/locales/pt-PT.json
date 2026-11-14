@@ -1176,5 +1176,21 @@
   "ai.vision.none": "Não há imagens locais compatíveis nesta nota.",
   "ai.vision.privacy": "{count, plural, one {# imagem selecionada será enviada} other {# imagens selecionadas serão enviadas}} para {provider} com este pedido. As imagens podem aumentar o consumo de tokens e o custo.",
   "ai.vision.describe": "Descrever imagens selecionadas",
-  "ai.mediaMismatch": "A IA removeu ou duplicou marcadores de anexos. O resultado não foi aplicado. Tente novamente ou copie o texto manualmente."
+  "ai.mediaMismatch": "A IA removeu ou duplicou marcadores de anexos. O resultado não foi aplicado. Tente novamente ou copie o texto manualmente.",
+  "editorMode.label": "Modo do editor",
+  "editorMode.rich": "Texto formatado",
+  "editorMode.live": "Pré-visualização em tempo real",
+  "editorMode.source": "Código Markdown",
+  "livePreview.toggleTask": "Alternar o estado da tarefa",
+  "livePreview.editImage": "Editar o código da imagem",
+  "vaultSwitcher.label": "Mudar de cofre",
+  "vaultSwitcher.add": "Adicionar cofre…",
+  "vaultSwitcher.empty": "Nenhum cofre guardado",
+  "vaultSwitcher.switching": "A mudar de cofre…",
+  "vaultSwitcher.failed": "Não foi possível abrir o cofre: {error}",
+  "vaultSwitcher.blocked": "A nota atual não pôde ser guardada ou está ocupada. Resolva o erro de gravação ou aguarde o fim da operação e tente novamente.",
+  "vaultSwitcher.stale": "O cofre ativo mudou. Reabra este menu e tente novamente.",
+  "editorMode.newNotes": "Editor de novas notas",
+  "editorMode.newNotesHelp": "Escolha o editor para novas notas vazias. As notas existentes não são alteradas.",
+  "editorMode.saveFailed": "Não foi possível guardar a preferência do editor: {error}"
 }

@@ -2,12 +2,14 @@
 	import { tick } from 'svelte';
 	import { findTypeaheadIndex, moveSelectIndex, typeaheadQuery, TYPEAHEAD_TIMEOUT, type SelectOption } from '$lib/utils/select-navigation';
 
-	let { id, label, options, value, disabled = false, onchange }: {
+	let { id, label, options, value, disabled = false, compact = false, onchange }: {
 		id: string;
 		label: string;
 		options: readonly SelectOption[];
 		value: string;
 		disabled?: boolean;
+		/** Icon-only editor-mode trigger, using the same accessible listbox. */
+		compact?: boolean;
 		onchange: (value: string) => void | Promise<void>;
 	} = $props();
 
@@ -99,7 +101,7 @@
 		const topEdge = (viewport?.offsetTop ?? 0) + 8;
 		const rightEdge = leftEdge + (viewport?.width ?? window.innerWidth) - 16;
 		const bottomEdge = topEdge + (viewport?.height ?? window.innerHeight) - 16;
-		const width = Math.min(rect.width, rightEdge - leftEdge);
+		const width = Math.min(compact ? 240 : rect.width, rightEdge - leftEdge);
 		const below = bottomEdge - rect.bottom - 4;
 		const above = rect.top - topEdge - 4;
 		const upward = below < Math.min(240, menu.scrollHeight) && above > below;
@@ -128,7 +130,10 @@
 		};
 		const blur = () => dismiss();
 		const scroll = (event: Event) => {
-			if (!(event.target instanceof Node) || !menu?.contains(event.target)) dismiss();
+			// Only scrolling an ancestor can move the trigger. Unrelated CodeMirror
+			// scroll restoration must not close a menu that the user just opened.
+			const target = event.target;
+			if (target instanceof Node && target.contains(trigger) && !menu?.contains(target)) dismiss();
 		};
 		document.addEventListener('pointerdown', outside, true);
 		document.addEventListener('scroll', scroll, true);
@@ -158,14 +163,16 @@
 	});
 </script>
 
-<div class="themed-select" bind:this={root} onfocusout={(event) => {
+<div class="themed-select" class:compact bind:this={root} onfocusout={(event) => {
 	if (!root.contains(event.relatedTarget as Node | null)) dismiss();
 }}>
-	<button {id} type="button" class="select-trigger" class:open {disabled} bind:this={trigger}
-		role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open}
+	<button {id} type="button" class="select-trigger" class:open class:chosen={compact && value !== 'rich'} {disabled} bind:this={trigger}
+		role="combobox" aria-label={compact ? `${label}: ${selected?.label ?? value}` : label} title={compact ? `${label}: ${selected?.label ?? value}` : undefined} aria-haspopup="listbox" aria-expanded={open}
 		aria-controls={open ? listId : undefined} aria-activedescendant={open ? optionId(active) : undefined}
 		onclick={() => { if (open) dismiss(); else show(); }} onkeydown={handleKeydown}>
-		<span lang={selected?.lang}>{selected?.label ?? value}</span>
+		{#if compact}
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m5.5 4-4 4 4 4 1-1-3-3 3-3Zm5 0-1 1 3 3-3 3 1 1 4-4Z"/></svg>
+		{:else}<span lang={selected?.lang}>{selected?.label ?? value}</span>{/if}
 		<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
 	</button>
 	{#if open}
@@ -185,6 +192,11 @@
 
 <style>
 	.themed-select { width: 100%; max-width: 320px; margin-top: 10px; }
+	.themed-select.compact { width: auto; max-width: none; margin: 0; flex-shrink: 0; }
+	.compact .select-trigger { min-height: 30px; width: 38px; padding: 5px 4px; gap: 2px; border-color: transparent; background: transparent; color: var(--text-secondary); }
+	.compact .select-trigger.chosen { color: var(--accent); }
+	.compact .select-trigger svg:last-child { width: 10px; }
+	.compact .select-trigger:hover, .compact .select-trigger.open { color: var(--text-primary); background: var(--bg-hover); }
 	.select-trigger {
 		display: flex; align-items: center; justify-content: space-between; gap: 12px;
 		width: 100%; min-height: 40px; padding: 8px 12px;
@@ -197,7 +209,7 @@
 	.select-trigger:hover:not(:disabled) { background: var(--bg-hover); }
 	.select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	.select-trigger.open { border-color: var(--accent); }
-	.select-trigger.open svg { transform: rotate(180deg); }
+	.select-trigger.open svg:last-child { transform: rotate(180deg); }
 	.select-trigger:disabled { opacity: 0.6; cursor: wait; }
 	.select-menu {
 		position: fixed; z-index: 2100; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain;
@@ -214,4 +226,5 @@
 	.select-option span { min-width: 0; overflow-wrap: anywhere; }
 	.select-option svg { flex-shrink: 0; color: var(--accent); }
 	.select-option.active { background: var(--accent-light); color: var(--text-primary); }
+	@media (pointer: coarse) { .compact .select-trigger { min-height: 40px; width: 44px; } }
 </style>

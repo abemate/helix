@@ -277,10 +277,9 @@
 					// Note windows don't re-open the vault (already open in main process)
 					if (!noteWindowPath) {
 						if (isIOS && activeVault?.bookmark_id) {
-							await restoreExternalVault(activeVault.bookmark_id);
-							$appConfig = await getAppConfig();
+							$appConfig = await restoreExternalVault(activeVault.bookmark_id);
 						} else {
-							await openVault(config.active_vault);
+							$appConfig = await openVault(config.active_vault, { existing: true });
 						}
 					}
 					$vaultReady = true;
@@ -324,7 +323,9 @@
 {:else if noteWindowPath}
 	<NoteWindow notePath={noteWindowPath} vaultPath={noteWindowVault} />
 {:else if $vaultReady}
-	<AppLayout />
+	{#key JSON.stringify([$appConfig?.active_vault ?? null, $appConfig?.active_bookmark_id ?? null])}
+		<AppLayout />
+	{/key}
 {:else}
 	<VaultPicker initialError={startupVaultError} />
 {/if}

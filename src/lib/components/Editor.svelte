@@ -37,7 +37,7 @@
 	import { readFile } from '@tauri-apps/plugin-fs';
 	import { openFile, openUrl, copyFileTo, copyImageToClipboard as copyImageToClipboardCmd, writeBytesTo, copyPngToClipboard, copyTextToClipboard } from '$lib/api';
 	import { save as saveDialog } from '@tauri-apps/plugin-dialog';
-	import { activeNote, activeNotePath, appConfig, editorDirty, sourceMode, focusMode, readOnly, quickAccessPaths, notes, navHistory, canGoBack, canGoForward, viewerNote, viewMode, notebooks, outlineWidth } from '$lib/stores/app';
+	import { activeNote, activeNotePath, appConfig, editorDirty, sourceMode, livePreviewMode, focusMode, readOnly, quickAccessPaths, notes, navHistory, canGoBack, canGoForward, viewerNote, viewMode, notebooks, outlineWidth } from '$lib/stores/app';
 	import { saveNote, importNote, createNote, saveImage, saveAttachment, readClipboardImage, readClipboardContents, addQuickAccess, removeQuickAccess, getQuickAccess, getNoteVersions, getNoteVersionContent, createVersion, aiAsk, getAllNoteTitles, readNote, renameNote, setToolbarLayout } from '$lib/api';
 	import type { NoteContent, VersionEntry, AiStreamEvent, NoteTitleEntry, TaskItem as TaskRecord, FileEvent, SearchTarget, ToolbarLayout } from '$lib/types';
 	import { listen } from '@tauri-apps/api/event';
@@ -56,6 +56,8 @@
 	import { defaultGridCols, expandImageRange, reorderTarget, serializeImgGrid } from '$lib/editor/imageGrid';
 	import { calloutGroup, calloutIcon, calloutLabel, CALLOUT_MENU, transformCalloutBlockquotes, serializeCallout } from '$lib/editor/callouts';
 	import SourceEditor from './SourceEditor.svelte';
+	import EditorModePicker from './EditorModePicker.svelte';
+	import { newNoteEditorMode, selectEditorMode } from '$lib/editor/mode';
 	import { SourceController } from '$lib/editor/source/controller';
 	import { findDocumentMatches, findSourceMatches, closestSearchMatch, type NoteSearchMatch, replaceableMatches } from '$lib/editor/search';
 	import { keybindings, bindingToKeys } from '$lib/keybindings';
@@ -195,6 +197,7 @@
 			scheduleOutlineActive();
 		}
 	}, { paste: handleFilePaste, drop: handleFileDrop, scroll: scheduleOutlineActive });
+	const sourceAssetContext = $derived(`${$activeNotePath ?? ''}|${currentNoteAssetRoot() ?? ''}`);
 	let loadedPath = '';
 	type NoteScrollPosition = { rich: number; source: number };
 	const MAX_NOTE_SCROLL_POSITIONS = 200;
@@ -4027,7 +4030,10 @@
 		externalOperationBusy = true;
 		source.configure(true, !isMobile && ($appConfig?.show_line_numbers ?? false));
 		editor?.setEditable(false);
+		let released = false;
 		return () => {
+			if (released || editorDisposed) return;
+			released = true;
 			externalOperationBusy = false;
 			source.configure($readOnly || !!$viewerNote, !isMobile && ($appConfig?.show_line_numbers ?? false));
 			editor?.setEditable(!$readOnly && !$viewerNote);
@@ -4118,12 +4124,10 @@
 		isLoadingNote = true;
 		isLargeDoc = content.length > LARGE_DOC_CHARS;
 		// Viewer mode (external file) always forces read-only. New notes stay editable and
-		// can opt into source mode without changing how existing notes choose their mode.
+		// use the saved editor preference without changing existing notes' presentation.
 		const isViewer = !!get(viewerNote);
 		const isNewNote = $activeNote?.meta.title === 'Untitled' && !content.replace(/^---[\s\S]*?---\s*/, '').trim();
-		if (isNewNote && ($appConfig?.new_notes_in_source_mode ?? false)) {
-			$sourceMode = true;
-		}
+		if (isNewNote && !isViewer) selectEditorMode(newNoteEditorMode($appConfig));
 		lastSourceMode = $sourceMode;
 		const shouldBeReadOnly = isViewer || isTrashedNote(path, $appConfig?.active_vault)
 			? true : (isNewNote ? false : ($appConfig?.default_view_mode ?? false));
@@ -7077,6 +7081,23 @@
 		return path.endsWith('.md') ? path : null;
 	}
 
+	function openPreviewLink(href: string) {
+		if (href.startsWith('#')) {
+			let target = href.slice(1);
+			try { target = decodeURIComponent(target); } catch { return; }
+			const slug = (text: string) => text.toLocaleLowerCase().replace(/\s+/g, '-');
+			const heading = sourceHeadings(source.state).find(item => slug(item.text) === slug(target));
+			if (heading) { source.select(heading.pos, heading.pos, true); source.focus(); }
+			return;
+		}
+		const notePath = resolveNoteHref(href);
+		if (notePath) { navigateToWikiLink(notePath, ''); return; }
+		if (/^(https?:|mailto:)/i.test(href)) void openUrl(href).catch(console.error);
+		else if (!/^[a-z][\w+.-]*:/i.test(href) || /^[a-z]:[\\/]/i.test(href)) {
+			void openFile(resolveHrefToAbsPath(href)).catch(console.error);
+		}
+	}
+
 	function linkMenuOpen() {
 		if (!linkContextMenu) return;
 		const href = linkContextMenu.href;
@@ -8220,16 +8241,7 @@
 					</svg>
 				</button>
 				{/if}
-				<button
-					class="icon-btn"
-					class:active={$sourceMode}
-					onclick={() => ($sourceMode = !$sourceMode)}
-					title={$ui("ui.toggle_markdown_editor")}
-				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-						<path d="M5.854 4.854a.5.5 0 10-.708-.708l-3.5 3.5a.5.5 0 000 .708l3.5 3.5a.5.5 0 00.708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 01.708-.708l3.5 3.5a.5.5 0 010 .708l-3.5 3.5a.5.5 0 01-.708-.708L13.293 8l-3.147-3.146z" />
-					</svg>
-				</button>
+				<EditorModePicker id={`${componentId}-editor-mode`} disabled={externalOperationBusy} />
 			</div>
 			{/if}
 		</div>
@@ -8356,12 +8368,12 @@
 			<div class="editor-body-row" class:reviewing-history={showHistory}>
 			<div class="editor-body" class:source-body={$sourceMode} class:history-hidden={showHistory} onscroll={scheduleOutlineActive}>
 				{#if isMobile}
-					<SourceEditor controller={source} readonly={showHistory || $readOnly || !!$viewerNote || externalOperationBusy} visible={$sourceMode} mobile />
+					<SourceEditor controller={source} readonly={showHistory || $readOnly || !!$viewerNote || externalOperationBusy} visible={$sourceMode} preview={$livePreviewMode} resolveImage={resolveImageSrc} openLink={openPreviewLink} context={sourceAssetContext} mobile />
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="tiptap-wrapper" class:large-doc={isLargeDoc} style={$sourceMode ? 'display:none' : ''} spellcheck="false" bind:this={editorElement} onerrorcapture={retryFailedImage} onclick={(e) => { closeLinkContextMenu(); handleEditorClick(e); }} onkeydown={(e) => { if (e.key === 'Escape') closeLinkContextMenu(); }}></div>
 				{:else}
 					{#if $sourceMode}
-						<SourceEditor controller={source} readonly={showHistory || $readOnly || !!$viewerNote || externalOperationBusy} numbers={$appConfig?.show_line_numbers ?? false} />
+						<SourceEditor controller={source} readonly={showHistory || $readOnly || !!$viewerNote || externalOperationBusy} numbers={$appConfig?.show_line_numbers ?? false} preview={$livePreviewMode} resolveImage={resolveImageSrc} openLink={openPreviewLink} context={sourceAssetContext} />
 					{:else}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="tiptap-wrapper" class:large-doc={isLargeDoc} spellcheck="false" bind:this={editorElement} onerrorcapture={retryFailedImage} onclick={(e) => { closeLinkContextMenu(); handleEditorClick(e); }} onkeydown={(e) => { if (e.key === 'Escape') closeLinkContextMenu(); }} oncontextmenu={handleEditorContextMenu}></div>

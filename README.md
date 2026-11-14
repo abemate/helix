@@ -163,6 +163,8 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 - Manual notebook sorting (drag to reorder above, into, or below)
 - External `.md` viewer mode with import-to-vault flow
 - PDF preview, Obsidian import, "Show in File Manager"
+- [Editable Live preview](docs/live-preview.md) alongside rich text and Markdown source, with one compact editor-mode selector and a three-button new-note preference (1.3.8, unreleased)
+- [Quick vault switching](docs/vault-switching.md) from the title bar, with saved-vault paths, Add vault and Manage Vaults (1.3.8, unreleased)
 - AI writing tools (Ollama / OpenAI-compatible / Anthropic / OpenAI)
 - [Provider model discovery and opt-in image input](docs/ai-models-and-images.md) (1.3.8, unreleased)
 - **Optional WebDAV sync** to your own server (Nextcloud, ownCloud, a NAS): manual or automatic, with keep-both conflict copies

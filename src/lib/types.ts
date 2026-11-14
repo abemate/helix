@@ -75,10 +75,9 @@ export interface PendingOpenFile {
   path: string;
 }
 
-export interface ExternalVaultResult {
-  bookmarkId: string;
+export interface VaultIdentity {
   path: string;
-  name: string;
+  bookmarkId: string | null;
 }
 
 export interface CustomThemeColors {
@@ -164,6 +163,7 @@ export interface AppConfig {
   ai_writing_style: string | null;
   default_view_mode: boolean;
   new_notes_in_source_mode: boolean;
+  new_note_editor_mode?: 'rich' | 'live' | 'source' | null;
   show_tray_icon: boolean;
   close_to_tray: boolean;
   enable_wiki_links: boolean;

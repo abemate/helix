@@ -7,11 +7,16 @@
 	import Sidebar from './Sidebar.svelte';
 	import NoteList from './NoteList.svelte';
 	import Editor from './Editor.svelte';
+	import EditorModePicker from './EditorModePicker.svelte';
+	import { editorMode, selectEditorMode, type EditorMode } from '$lib/editor/mode';
 	import SearchPanel from './SearchPanel.svelte';
 	import CommandPalette from './CommandPalette.svelte';
 	import SettingsPanel from './SettingsPanel.svelte';
 	import InfoPanel from './InfoPanel.svelte';
 	import TitleBar from './TitleBar.svelte';
+	import VaultSwitcher from './VaultSwitcher.svelte';
+	import { createVaultSwitch, activeVaultIdentity, mergeVaultActivation, vaultEventMatches } from '$lib/utils/vault-switch';
+	import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 	import ResizeHandle from './ResizeHandle.svelte';
 	import TagLabel from './TagLabel.svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -38,6 +43,7 @@
 		sourceMode,
 		mobileView,
 		appConfig,
+		vaultReady,
 		quickAccessPaths,
 		tags,
 		notes,
@@ -82,7 +88,7 @@
 		tabletNavHidden = hidden;
 		localStorage.setItem('helix-tablet-nav-hidden', hidden ? '1' : '0');
 	}
-	import { loadVaultState, saveVaultState, readNote, deleteNote, createDailyNote, createBackup, getPendingOpenFile, ackPendingOpenFile, addQuickAccess, removeQuickAccess, getQuickAccess, setTheme, syncNow, setTaskDone, setTaskPriority, setTaskDue } from '$lib/api';
+	import { openVault, restoreExternalVault, loadVaultState, saveVaultState, readNote, deleteNote, createDailyNote, createBackup, getPendingOpenFile, ackPendingOpenFile, addQuickAccess, removeQuickAccess, getQuickAccess, setTheme, syncNow, setTaskDone, setTaskPriority, setTaskDue } from '$lib/api';
 	import { darkThemes, isAndroid } from '$lib/platform';
 	import { openNoteWindow } from '$lib/utils/window';
 	import { normalizeStartupView, resolveStartupTarget } from '$lib/utils/startup-view';
@@ -109,6 +115,7 @@
 	let outlineOpen = $state(false);
 	let outlinePanelId = $state('');
 	let mobileNoteMenuOpen = $state(false);
+	let vaultSwitchBusy = $state(false);
 	let mobileNoteMenuWrapper = $state<HTMLDivElement>();
 	let mobileNoteMenuTrigger = $state<HTMLButtonElement>();
 	let mobileNoteMenu = $state<HTMLDivElement>();
@@ -183,7 +190,9 @@
 	let unlistenVaultRestored: (() => void) | null = null;
 	let fileRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 	const ownerVault = get(appConfig)?.active_vault ?? null;
-	activateVaultData(ownerVault);
+	const ownerBookmark = get(appConfig)?.active_bookmark_id ?? null;
+	// A fresh layout also reloads clean notes after returning from vault management.
+	activateVaultData(ownerVault, ownerBookmark, true);
 	let stateReady = false;
 	let restoringNote = false;
 	let disposed = false;
@@ -203,7 +212,8 @@
 	let fileRefreshRequest = 0;
 
 	function ownerIsCurrent() {
-		return !disposed && (get(appConfig)?.active_vault ?? null) === ownerVault;
+		const current = get(appConfig);
+		return !disposed && (current?.active_vault ?? null) === ownerVault && (current?.active_bookmark_id ?? null) === ownerBookmark;
 	}
 
 	function beginNavigation() {
@@ -445,10 +455,10 @@
 
 	function drainPendingOpenFiles() {
 		if (pendingOpenDrain) { pendingOpenNotification = true; return; }
-		if (!stateReady || !ownerIsCurrent()) return;
+		if (vaultSwitchBusy || !stateReady || !ownerIsCurrent()) return;
 		pendingOpenDrain = (async () => {
 			try {
-				while (ownerIsCurrent()) {
+				while (ownerIsCurrent() && !vaultSwitchBusy) {
 					const pending = await getPendingOpenFile();
 					if (!pending || !ownerIsCurrent()) break;
 					if (!(await handleOpenFile(pending.path))) break;
@@ -530,11 +540,67 @@
 	}
 
 	async function prepareVaultSwitch(): Promise<boolean> {
+		if (vaultSwitchBusy) return false;
 		const token = beginNavigation();
 		if (editor && !(await editor.flushSave())) return false;
 		if (!navigationIsCurrent(token)) return false;
 		await persistVaultState();
 		return navigationIsCurrent(token);
+	}
+
+	const vaultSwitch = createVaultSwitch({
+		current: () => activeVaultIdentity(get(appConfig)),
+		busy: value => {
+			if (!disposed) {
+				vaultSwitchBusy = value;
+				if (value) { beginNavigation(); activeRefreshRequest++; }
+				else {
+					queueMicrotask(drainPendingOpenFiles);
+					const path = get(activeNotePath);
+					if (path && ownerIsCurrent()) void refreshActiveNote(path);
+				}
+			}
+		},
+		acquire: async () => {
+			if (!editor && get(editorDirty)) return null;
+			const token = beginNavigation();
+			const release = editor ? await editor.beginPathMutation() : () => {};
+			if (!release) return null;
+			if (!navigationIsCurrent(token)) { release(); return null; }
+			await persistVaultState();
+			if (!navigationIsCurrent(token)) { release(); return null; }
+			return release;
+		},
+		open: (target, expected) => target.bookmarkId
+			? restoreExternalVault(target.bookmarkId, expected)
+			: openVault(target.path, { existing: target.existing, expected }),
+		commit: async config => {
+			if (disposed) return;
+			$showSettings = false;
+			$showSearch = false;
+			$showCommandPalette = false;
+			$focusMode = false;
+			appConfig.update(current => mergeVaultActivation(current, config));
+			// The root keys AppLayout by path AND bookmark. Keep the old editor frozen
+			// until teardown, so its destroy hook cannot save into the new vault.
+			await tick();
+		},
+		manage: async () => {
+			if (disposed) return;
+			$showSettings = false;
+			$vaultReady = false;
+			await tick();
+		},
+	});
+
+	function addVault() {
+		// Keep mobile storage permissions, local-folder naming and iOS Files access
+		// in the existing platform-specific picker rather than inventing a second flow.
+		if (isMobile) return vaultSwitch.manage();
+		return vaultSwitch.add(async () => {
+			const selected = await openFolderDialog({ directory: true, multiple: false, title: $ui('ui.choose_notes_folder') });
+			return typeof selected === 'string' ? { path: selected, bookmarkId: null, existing: false } : null;
+		});
 	}
 
 	function handleSidebarResize(delta: number) {
@@ -837,6 +903,7 @@
 	}
 
 	function handleMouseDown(e: MouseEvent) {
+		if (vaultSwitchBusy) { e.preventDefault(); return; }
 		if (e.button === 3) { e.preventDefault(); navigateHistory(-1); }
 		if (e.button === 4) { e.preventDefault(); navigateHistory(1); }
 	}
@@ -850,6 +917,7 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (vaultSwitchBusy) { e.preventDefault(); return; }
 		const mod = e.ctrlKey || e.metaKey;
 		const code = e.code;
 
@@ -998,12 +1066,12 @@
 
 	let activeRefreshRequest = 0;
 	async function refreshActiveNote(path: string, restored = false) {
-		if (path !== $activeNotePath || !$activeNote || !ownerIsCurrent()) return;
+		if (vaultSwitchBusy || path !== $activeNotePath || !$activeNote || !ownerIsCurrent()) return;
 		const request = ++activeRefreshRequest;
 		const openingNote = $activeNote;
 		try {
 			const content = await readNote(ownerVault!, path);
-			if (!ownerIsCurrent() || request !== activeRefreshRequest || $activeNotePath !== path) return;
+			if (vaultSwitchBusy || !ownerIsCurrent() || request !== activeRefreshRequest || $activeNotePath !== path) return;
 			if ($editorDirty) {
 				if (restored && content.raw !== editor?.getAcceptedRaw()) editor?.flagExternalConflict();
 				return;
@@ -1182,12 +1250,12 @@
 		backupInterval = setInterval(checkScheduledBackup, 5 * 60 * 1000);
 
 		// ── WebDAV sync: global status + auto-sync triggers ──
-		unlistenSync.push(await listen<{ vault_path: string }>('sync-progress', ({ payload }) => {
-			if (ownerIsCurrent() && payload.vault_path === ownerVault) syncState.set({ running: true, error: null, result: null });
+		unlistenSync.push(await listen<{ vault_path: string; bookmark_id?: string | null }>('sync-progress', ({ payload }) => {
+			if (ownerIsCurrent() && vaultEventMatches(payload, { path: ownerVault!, bookmarkId: ownerBookmark })) syncState.set({ running: true, error: null, result: null });
 		}));
 		if (!ownerIsCurrent()) { unlistenSync.pop()?.(); return; }
 		unlistenSync.push(await listen<{ vault_path: string; bookmark_id?: string | null; success: boolean; summary?: SyncSummary; last_sync_time?: string | null }>('sync-done', ({ payload }) => {
-			if (!ownerIsCurrent() || payload.vault_path !== ownerVault) return;
+			if (!ownerIsCurrent() || !vaultEventMatches(payload, { path: ownerVault!, bookmarkId: ownerBookmark })) return;
 			syncState.set({ running: false, error: null,
 				result: payload.success ? { vault: payload.vault_path, summary: payload.summary ?? {} } : null });
 			if (!payload.success || !payload.last_sync_time) return;
@@ -1199,8 +1267,8 @@
 			});
 		}));
 		if (!ownerIsCurrent()) { unlistenSync.pop()?.(); return; }
-		unlistenSync.push(await listen<{ vault_path: string; error?: string }>('sync-error', ({ payload }) => {
-			if (ownerIsCurrent() && payload.vault_path === ownerVault) syncState.set({ running: false, error: payload.error ?? 'Sync failed', result: null });
+		unlistenSync.push(await listen<{ vault_path: string; bookmark_id?: string | null; error?: string }>('sync-error', ({ payload }) => {
+			if (ownerIsCurrent() && vaultEventMatches(payload, { path: ownerVault!, bookmarkId: ownerBookmark })) syncState.set({ running: false, error: payload.error ?? 'Sync failed', result: null });
 		}));
 		if (!ownerIsCurrent()) { unlistenSync.pop()?.(); return; }
 
@@ -1252,6 +1320,8 @@
 
 <svelte:window onkeydown={handleKeydown} onmousedown={isMobile ? undefined : handleMouseDown} />
 
+<div class="vault-transition-shell" aria-busy={vaultSwitchBusy}>
+<div class="vault-transition-content" inert={vaultSwitchBusy}>
 {#if isMobile}
 	<!-- ═══ MOBILE LAYOUT ═══ -->
 	<div class="mobile-shell">
@@ -1285,18 +1355,21 @@
 				</div>
 			{/if}
 			{#if tabletNavShown || (!tabletLayout && $mobileView !== 'editor')}
-				<span class="mobile-header-title">
+				<div class="mobile-header-title">
 					{#if $mobileView === 'sidebar'}
-						HelixNotes
+						<VaultSwitcher vaults={$appConfig?.vaults ?? []} active={activeVaultIdentity($appConfig)} busy={vaultSwitchBusy} onselect={vaultSwitch.switchTo} onadd={addVault} onmanage={vaultSwitch.manage} />
 					{:else}
 						{#if $viewMode === 'notebook'}{$activeNotebook?.name ?? 'Notebook'}{:else if $viewMode === 'tag' && $activeTag}<TagLabel name={$activeTag} size={16} />{:else if $viewMode === 'quickaccess'}{$ui("ui.quick_access")}{:else if $viewMode === 'daily'}{$ui("ui.daily_notes")}{:else if $viewMode === 'tasks'}{$ui("ui.tasks")}{:else if $viewMode === 'trash'}{$ui("ui.trash")}{:else}{$ui("ui.all_notes")}{/if}
 					{/if}
-				</span>
+				</div>
 				{#if $globalUpdateAvailable && $mobileView === 'sidebar'}
 					<button class="mobile-update-badge" onclick={() => { $settingsTab = 'updates'; $showSettings = true; }}>
 						v{$globalUpdateAvailable.version}
 					</button>
 				{/if}
+			{/if}
+			{#if $mobileView === 'editor'}
+				<div class="mobile-vault-switcher"><VaultSwitcher vaults={$appConfig?.vaults ?? []} active={activeVaultIdentity($appConfig)} busy={vaultSwitchBusy} onselect={vaultSwitch.switchTo} onadd={addVault} onmanage={vaultSwitch.manage} /></div>
 			{/if}
 			<div class="mobile-header-actions">
 				{#if $mobileView === 'editor' || (tabletLayout && $activeNotePath)}
@@ -1375,12 +1448,13 @@
 						{#if inMenu}<span>{$syncState.running ? $ui("ui.syncing") : $syncState.error ? $ui("ui.sync_error_retry") : $ui("ui.sync_now")}</span>{/if}
 					</button>
 					{/if}
-					<button class={inMenu ? 'mobile-note-menu-item' : 'mobile-header-btn'} type="button" role={inMenu ? 'menuitem' : undefined} class:active={$sourceMode} onclick={() => ($sourceMode = !$sourceMode)} title={$sourceMode ? $ui("ui.rich_editor") : $ui("ui.source_mode")}>
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-						</svg>
-						{#if inMenu}<span>{$sourceMode ? $ui("ui.rich_editor") : $ui("ui.source_mode")}</span>{/if}
-					</button>
+					{#if inMenu}
+						{#each ['rich', 'live', 'source'] as mode}
+							<button class="mobile-note-menu-item" type="button" role="menuitemradio" aria-checked={$editorMode === mode} class:active={$editorMode === mode} onclick={() => selectEditorMode(mode as EditorMode)}>
+								<span>{$ui(mode === 'rich' ? 'editorMode.rich' : mode === 'live' ? 'editorMode.live' : 'editorMode.source')}</span>
+							</button>
+						{/each}
+					{:else}<EditorModePicker id="tablet-editor-mode" />{/if}
 					{/snippet}
 					{#if tabletLayout}
 						{@render secondaryNoteActions(false)}
@@ -1486,7 +1560,7 @@
 				</div>
 			</div>
 		{:else}
-			<TitleBar onNewNote={createAndFocusNote} onDailyNote={handleDailyNote} onSelectNote={selectNoteFromSwitcher} onBeforeVaultSwitch={prepareVaultSwitch} />
+			<TitleBar onNewNote={createAndFocusNote} onDailyNote={handleDailyNote} onSelectNote={selectNoteFromSwitcher} onSwitchVault={vaultSwitch.switchTo} onAddVault={addVault} onManageVaults={vaultSwitch.manage} switching={vaultSwitchBusy} />
 		{/if}
 		<div class="app-layout">
 			{#if !$focusMode}
@@ -1536,9 +1610,15 @@
 <SearchPanel onSelectNote={selectNoteFromSearch} />
 <CommandPalette onNavigate={handleViewChanged} />
 <SettingsPanel onBeforeVaultSwitch={prepareVaultSwitch} />
+</div>
+{#if vaultSwitchBusy}<div class="vault-transition-status" role="status">{$ui('vaultSwitcher.switching')}</div>{/if}
+</div>
 <InfoPanel />
 
 <style>
+	.vault-transition-shell, .vault-transition-content { width: 100%; height: 100%; min-height: 0; }
+	.vault-transition-shell { position: relative; }
+	.vault-transition-status { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 2300; max-width: calc(100vw - 32px); padding: 8px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; pointer-events: none; }
 	/* ═══ DESKTOP STYLES ═══ */
 	.app-shell {
 		display: flex;
@@ -1737,6 +1817,7 @@
 		flex-shrink: 0;
 	}
 
+	.mobile-vault-switcher { min-width: 0; max-width: 160px; flex-shrink: 1; }
 	.mobile-header-actions {
 		display: flex;
 		align-items: center;

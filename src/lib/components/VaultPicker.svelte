@@ -103,7 +103,7 @@
 		}
 	}
 
-	async function openSelectedVault(path: string) {
+	async function openSelectedVault(path: string, existing = false) {
 		loading = true;
 		error = '';
 		try {
@@ -113,9 +113,7 @@
 					bridge?.prepareVaultDir?.(path);
 				} catch { /* Rust will retry mkdir itself */ }
 			}
-			await openVault(path);
-			const config = await getAppConfig();
-			$appConfig = config;
+			$appConfig = await openVault(path, { existing });
 			$vaultReady = true;
 		} catch (e) {
 			const msg = String(e);
@@ -135,7 +133,7 @@
 		try {
 			const selected = await chooseExternalVault();
 			if (!selected) return;
-			$appConfig = await getAppConfig();
+			$appConfig = selected;
 			$vaultReady = true;
 		} catch (e) {
 			error = String(e);
@@ -147,15 +145,14 @@
 	async function openRecentVault(vault: VaultConfig) {
 		if (loading) return;
 		if (!isIOS || !vault.bookmark_id) {
-			await openSelectedVault(vault.path);
+			await openSelectedVault(vault.path, true);
 			return;
 		}
 
 		loading = true;
 		error = '';
 		try {
-			await restoreExternalVault(vault.bookmark_id);
-			$appConfig = await getAppConfig();
+			$appConfig = await restoreExternalVault(vault.bookmark_id);
 			$vaultReady = true;
 		} catch (e) {
 			error = String(e);

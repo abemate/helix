@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { t as ui, label as uiLabel } from '$lib/i18n';
-	import { showCommandPalette, showSearch, theme, sourceMode, viewMode, activeNotebook, activeTag } from '$lib/stores/app';
+	import { showCommandPalette, showSearch, theme, viewMode, activeNotebook, activeTag } from '$lib/stores/app';
 	import { setTheme, reindex } from '$lib/api';
+	import { selectEditorMode } from '$lib/editor/mode';
 	import { darkThemes } from '$lib/platform';
 
 	// onNavigate runs the parent's view-change handler (refreshes the note list and reveals it
@@ -133,14 +134,9 @@
 			label: 'Switch to Dracula Theme',
 			action: () => { $theme = 'dracula'; setTheme('dracula'); applyTheme('dracula'); $showCommandPalette = false; }
 		},
-		{
-			id: 'toggle-source',
-			label: 'Toggle Source/WYSIWYG Mode',
-			action: () => {
-				$sourceMode = !$sourceMode;
-				$showCommandPalette = false;
-			}
-		},
+		{ id: 'editor-rich', label: 'Rich text', action: () => { selectEditorMode('rich'); $showCommandPalette = false; } },
+		{ id: 'editor-live', label: 'Live preview', action: () => { selectEditorMode('live'); $showCommandPalette = false; } },
+		{ id: 'editor-source', label: 'Markdown source', action: () => { selectEditorMode('source'); $showCommandPalette = false; } },
 		{
 			id: 'reindex',
 			label: 'Rebuild Search Index',

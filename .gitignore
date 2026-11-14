@@ -12,6 +12,8 @@ bun.lockb
 .wrangler
 /.svelte-kit
 /build
+/test-results/
+/playwright-report/
 
 # Nix
 /result

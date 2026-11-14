@@ -1176,5 +1176,21 @@
   "ai.vision.none": "Geen geschikte lokale afbeeldingen in deze notitie.",
   "ai.vision.privacy": "{count, plural, one {# aangevinkte afbeelding wordt} other {# aangevinkte afbeeldingen worden}} met dit verzoek naar {provider} gestuurd. Afbeeldingen kunnen het tokengebruik en de kosten verhogen.",
   "ai.vision.describe": "Gekozen afbeeldingen beschrijven",
-  "ai.mediaMismatch": "De AI heeft mediamarkeringen verwijderd of herhaald. Het resultaat is niet toegepast. Probeer opnieuw of kopieer de tekst handmatig."
+  "ai.mediaMismatch": "De AI heeft mediamarkeringen verwijderd of herhaald. Het resultaat is niet toegepast. Probeer opnieuw of kopieer de tekst handmatig.",
+  "editorMode.label": "Editormodus",
+  "editorMode.rich": "Opgemaakte tekst",
+  "editorMode.live": "Livevoorbeeld",
+  "editorMode.source": "Markdown-bron",
+  "livePreview.toggleTask": "Taak afvinken of herstellen",
+  "livePreview.editImage": "Afbeeldingsbron bewerken",
+  "vaultSwitcher.label": "Kluis wisselen",
+  "vaultSwitcher.add": "Kluis toevoegen…",
+  "vaultSwitcher.empty": "Geen opgeslagen kluizen",
+  "vaultSwitcher.switching": "Kluis wisselen…",
+  "vaultSwitcher.failed": "Kan de kluis niet openen: {error}",
+  "vaultSwitcher.blocked": "De huidige notitie kon niet worden opgeslagen of is bezig. Los de opslagfout op of wacht tot de bewerking klaar is en probeer het opnieuw.",
+  "vaultSwitcher.stale": "De actieve kluis is gewijzigd. Open dit menu opnieuw en probeer het nogmaals.",
+  "editorMode.newNotes": "Editor voor nieuwe notities",
+  "editorMode.newNotesHelp": "Kies de editor voor nieuwe lege notities. Bestaande notities veranderen niet.",
+  "editorMode.saveFailed": "Kan de editorvoorkeur niet opslaan: {error}"
 }

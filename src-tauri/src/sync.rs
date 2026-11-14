@@ -1138,6 +1138,7 @@ pub fn test_connection(cfg: WebdavConfig) -> Result<String, String> {
 pub fn run_sync(
     app: tauri::AppHandle,
     vault: String,
+    bookmark_id: Option<String>,
     cfg: WebdavConfig,
 ) -> Result<SyncSummary, String> {
     use std::sync::atomic::Ordering;
@@ -1151,7 +1152,7 @@ pub fn run_sync(
 
     let _ = app.emit(
         "sync-progress",
-        serde_json::json!({ "vault_path": vault, "status": "listing" }),
+        serde_json::json!({ "vault_path": vault, "bookmark_id": bookmark_id, "status": "listing" }),
     );
     let remote: HashMap<String, RemoteFile> = client
         .list()?
@@ -1182,7 +1183,7 @@ pub fn run_sync(
 
     let _ = app.emit(
         "sync-progress",
-        serde_json::json!({ "vault_path": vault, "status": "syncing" }),
+        serde_json::json!({ "vault_path": vault, "bookmark_id": bookmark_id, "status": "syncing" }),
     );
     let mut changes = HashMap::new();
     // Mute the watcher across local writes; its deferred batch also preserves

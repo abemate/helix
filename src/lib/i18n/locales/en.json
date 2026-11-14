@@ -1176,5 +1176,21 @@
   "ai.vision.none": "No eligible local images in this note.",
   "ai.vision.privacy": "{count, plural, one {# checked image will be sent} other {# checked images will be sent}} to {provider} with this request. Images can increase token usage and cost.",
   "ai.vision.describe": "Describe selected images",
-  "ai.mediaMismatch": "The AI removed or duplicated media placeholders. The result was not applied. Retry or copy the text manually."
+  "ai.mediaMismatch": "The AI removed or duplicated media placeholders. The result was not applied. Retry or copy the text manually.",
+  "editorMode.label": "Editor mode",
+  "editorMode.rich": "Rich text",
+  "editorMode.live": "Live preview",
+  "editorMode.source": "Markdown source",
+  "livePreview.toggleTask": "Toggle task",
+  "livePreview.editImage": "Edit image source",
+  "vaultSwitcher.label": "Switch vault",
+  "vaultSwitcher.add": "Add vault…",
+  "vaultSwitcher.empty": "No saved vaults",
+  "vaultSwitcher.switching": "Switching vault…",
+  "vaultSwitcher.failed": "Could not open the vault: {error}",
+  "vaultSwitcher.blocked": "The current note could not be saved or is busy. Resolve the save error or wait for the operation to finish, then try again.",
+  "vaultSwitcher.stale": "The active vault changed. Reopen this menu and try again.",
+  "editorMode.newNotes": "New note editor",
+  "editorMode.newNotesHelp": "Choose the editor for new empty notes. This does not change existing notes.",
+  "editorMode.saveFailed": "Could not save the editor preference: {error}"
 }

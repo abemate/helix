@@ -1176,5 +1176,21 @@
   "ai.vision.none": "Keine geeigneten lokalen Bilder in dieser Notiz.",
   "ai.vision.privacy": "{count, plural, one {# ausgewähltes Bild wird} other {# ausgewählte Bilder werden}} mit dieser Anfrage an {provider} gesendet. Bilder können Tokenverbrauch und Kosten erhöhen.",
   "ai.vision.describe": "Ausgewählte Bilder beschreiben",
-  "ai.mediaMismatch": "Die KI hat Medienplatzhalter entfernt oder dupliziert. Das Ergebnis wurde nicht angewendet. Erneut versuchen oder den Text manuell kopieren."
+  "ai.mediaMismatch": "Die KI hat Medienplatzhalter entfernt oder dupliziert. Das Ergebnis wurde nicht angewendet. Erneut versuchen oder den Text manuell kopieren.",
+  "editorMode.label": "Editormodus",
+  "editorMode.rich": "Formatierter Text",
+  "editorMode.live": "Live-Vorschau",
+  "editorMode.source": "Markdown-Quelltext",
+  "livePreview.toggleTask": "Aufgabenstatus umschalten",
+  "livePreview.editImage": "Bildquelltext bearbeiten",
+  "vaultSwitcher.label": "Tresor wechseln",
+  "vaultSwitcher.add": "Tresor hinzufügen…",
+  "vaultSwitcher.empty": "Keine gespeicherten Tresore",
+  "vaultSwitcher.switching": "Tresor wird gewechselt…",
+  "vaultSwitcher.failed": "Tresor konnte nicht geöffnet werden: {error}",
+  "vaultSwitcher.blocked": "Die aktuelle Notiz konnte nicht gespeichert werden oder ist beschäftigt. Beheben Sie den Speicherfehler oder warten Sie auf das Ende des Vorgangs und versuchen Sie es erneut.",
+  "vaultSwitcher.stale": "Der aktive Tresor hat sich geändert. Öffnen Sie dieses Menü erneut und versuchen Sie es noch einmal.",
+  "editorMode.newNotes": "Editor für neue Notizen",
+  "editorMode.newNotesHelp": "Wählen Sie den Editor für neue leere Notizen. Bestehende Notizen bleiben unverändert.",
+  "editorMode.saveFailed": "Editor-Einstellung konnte nicht gespeichert werden: {error}"
 }

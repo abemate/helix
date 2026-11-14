@@ -1,21 +1,30 @@
 <script lang="ts">
 	import { t as ui } from '$lib/i18n';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
-	import { vaultReady, focusMode, readOnly, updateAvailable, showSettings, settingsTab, appConfig, activeNotePath, activeVaultConfig, syncState } from '$lib/stores/app';
+	import { focusMode, readOnly, updateAvailable, showSettings, settingsTab, appConfig, activeNotePath, activeVaultConfig, syncState } from '$lib/stores/app';
 	import { syncNow } from '$lib/api';
 	import NoteSwitcher from './NoteSwitcher.svelte';
+	import VaultSwitcher from './VaultSwitcher.svelte';
+	import { activeVaultIdentity, type VaultSwitchResult } from '$lib/utils/vault-switch';
+	import type { VaultConfig } from '$lib/types';
 	import { isTrashedNote } from '$lib/utils/paths';
 
 	let {
 		onNewNote = () => {},
 		onDailyNote = () => {},
 		onSelectNote,
-		onBeforeVaultSwitch
+		onSwitchVault,
+		onAddVault,
+		onManageVaults,
+		switching = false
 	}: {
 		onNewNote?: () => void;
 		onDailyNote?: () => void;
 		onSelectNote?: (path: string) => Promise<boolean>;
-		onBeforeVaultSwitch: () => Promise<boolean>;
+		onSwitchVault: (vault: VaultConfig) => Promise<VaultSwitchResult>;
+		onAddVault: () => Promise<VaultSwitchResult>;
+		onManageVaults: () => Promise<VaultSwitchResult>;
+		switching?: boolean;
 	} = $props();
 
 	const appWindow = getCurrentWindow();
@@ -40,7 +49,7 @@
 	function handleMouseDown(e: MouseEvent) {
 		if (e.button !== 0) return;
 		const target = e.target as HTMLElement;
-		if (target.closest('.titlebar-controls') || target.closest('.titlebar-actions') || target.closest('.titlebar-note-switcher')) return;
+		if (target.closest('.titlebar-controls') || target.closest('.titlebar-actions') || target.closest('.titlebar-note-switcher') || target.closest('.titlebar-vault-switcher')) return;
 
 		// Don't start dragging near window edges - let Tauri handle resize
 		if (!maximized) {
@@ -91,19 +100,15 @@
 			</button>
 		{/if}
 	</div>
+	<div class="titlebar-vault-switcher">
+		<VaultSwitcher vaults={$appConfig?.vaults ?? []} active={activeVaultIdentity($appConfig)} busy={switching} onselect={onSwitchVault} onadd={onAddVault} onmanage={onManageVaults} />
+	</div>
 	{#if $appConfig?.show_note_switcher}
 		<div class="titlebar-note-switcher">
 			<NoteSwitcher {onSelectNote} />
 		</div>
 	{/if}
 	<div class="titlebar-actions">
-		<button class="switch-vault-btn" onclick={async () => { if (await onBeforeVaultSwitch()) $vaultReady = false; }} title={$ui("ui.manage_vaults")} aria-label={$ui("ui.manage_vaults")}>
-			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<rect x="3" y="3" width="18" height="16" rx="2" />
-				<circle cx="12" cy="11" r="3.5" />
-				<path d="M12 7.5V6M12 16v-1.5M7 19v2M17 19v2" />
-			</svg>
-		</button>
 		<button class="switch-vault-btn" onclick={() => ($focusMode = true)} title={$ui("ui.focus_mode")}>
 			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
@@ -192,6 +197,7 @@
 		pointer-events: none;
 	}
 
+	.titlebar-vault-switcher { min-width: 0; max-width: 200px; margin-left: 10px; -webkit-app-region: no-drag; }
 	.titlebar-note-switcher {
 		display: flex;
 		align-items: center;
@@ -315,6 +321,10 @@
 		color: white;
 	}
 
+	@media (max-width: 720px) {
+		.titlebar-title { display: none; }
+		.titlebar-vault-switcher { max-width: 130px; }
+	}
 	/* macOS: add left padding for native traffic light buttons */
 	.titlebar.macos .titlebar-brand {
 		padding-left: 78px;

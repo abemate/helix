@@ -111,26 +111,57 @@ fn announce_rewritten_links<R: Runtime>(
 
 // ── Vault Management ──
 
-#[cfg(target_os = "ios")]
-use tauri_plugin_ios_vault_access::{FolderSelection, IosVaultAccessExt};
+#[cfg(test)]
+mod vault_switch_tests;
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalVaultResult {
-    pub bookmark_id: String,
-    pub path: String,
-    pub name: String,
+#[cfg(target_os = "ios")]
+use tauri_plugin_ios_vault_access::IosVaultAccessExt;
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct VaultIdentity {
+    path: String,
+    bookmark_id: Option<String>,
 }
 
-#[cfg(target_os = "ios")]
-impl From<FolderSelection> for ExternalVaultResult {
-    fn from(selection: FolderSelection) -> Self {
-        Self {
-            bookmark_id: selection.bookmark_id,
-            path: selection.path,
-            name: selection.name,
+fn validate_vault_origin(
+    config: &AppConfig,
+    expected: Option<&VaultIdentity>,
+) -> Result<(), String> {
+    if let Some(expected) = expected {
+        if config.active_vault.as_deref() != Some(expected.path.as_str())
+            || config.active_bookmark_id != expected.bookmark_id
+        {
+            return Err("The active vault changed. Reopen the vault menu before switching.".into());
         }
     }
+    Ok(())
+}
+
+fn validate_vault_path(path: &str) -> Result<(), String> {
+    if !Path::new(path).is_absolute() {
+        return Err("Choose an absolute vault folder path.".into());
+    }
+    Ok(())
+}
+
+fn validate_saved_vault(config: &AppConfig, path: &str) -> Result<(), String> {
+    if !config
+        .vaults
+        .iter()
+        .any(|vault| vault.bookmark_id.is_none() && vault.path == path)
+    {
+        return Err("This vault is no longer in the saved list. Reopen the vault menu.".into());
+    }
+    if !Path::new(path).is_dir() {
+        return Err("This vault folder is unavailable. Reconnect its storage or choose it again; it was not recreated.".into());
+    }
+    // An unmounted drive can leave an empty mount-point directory behind. Saved
+    // vaults were already initialized; do not silently initialize that placeholder.
+    if !Path::new(path).join(".helixnotes/config.json").is_file() {
+        return Err("This saved vault's metadata is unavailable. Reconnect its storage or explicitly choose the folder again.".into());
+    }
+    Ok(())
 }
 
 fn open_vault_path(
@@ -138,7 +169,8 @@ fn open_vault_path(
     state: &State<'_, AppState>,
     path: String,
     external: Option<(String, String)>,
-) -> Result<std::sync::Arc<SearchIndex>, String> {
+) -> Result<(std::sync::Arc<SearchIndex>, AppConfig), String> {
+    validate_vault_path(&path)?;
     operations::ensure_vault_structure(&path)?;
 
     // Stage the search index and watcher before replacing the active runtime.
@@ -196,14 +228,17 @@ fn open_vault_path(
         return Err(error);
     }
     let old_search = search_slot.replace(search.clone());
-    *config = next;
+    *config = next.clone();
     drop(config);
     drop(search_slot);
-    // Index disposal and watcher shutdown must not hold global state slots.
-    state.retain_vault_watchers()?;
+    // Once configuration is committed, cleanup failures must not report activation
+    // failure and strand the frontend on the previous vault.
+    if let Err(error) = state.retain_vault_watchers() {
+        log::error!("Could not clean up vault watchers after activation: {error}");
+    }
     drop(old_search);
 
-    Ok(search)
+    Ok((search, next))
 }
 
 #[tauri::command]
@@ -211,17 +246,29 @@ pub async fn open_vault(
     app: AppHandle,
     state: State<'_, AppState>,
     path: String,
-) -> Result<(), String> {
+    require_existing: Option<bool>,
+    expected: Option<VaultIdentity>,
+) -> Result<AppConfig, String> {
     let _transition = state.vault_transition.lock().await;
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
-        let search = open_vault_path(app.clone(), &state, path.clone(), None)?;
+        validate_vault_path(&path)?;
+        {
+            let config = state.config.lock().map_err(|error| error.to_string())?;
+            validate_vault_origin(&config, expected.as_ref())?;
+            if require_existing.unwrap_or(false) {
+                validate_saved_vault(&config, &path)?;
+            }
+        }
+        let (search, config) = open_vault_path(app.clone(), &state, path.clone(), None)?;
         #[cfg(target_os = "ios")]
-        app.ios_vault_access().release_active()?;
+        if let Err(error) = app.ios_vault_access().release_active() {
+            log::error!("Could not release previous vault scope after activation: {error}");
+        }
         if let Err(error) = search.queue_vault_refresh(&path) {
             log::error!("Failed to queue opened vault search refresh: {error}");
         }
-        Ok(())
+        Ok(config)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -231,7 +278,7 @@ pub async fn open_vault(
 pub async fn choose_external_vault(
     app: AppHandle,
     state: State<'_, AppState>,
-) -> Result<Option<ExternalVaultResult>, String> {
+) -> Result<Option<AppConfig>, String> {
     let _transition = state.vault_transition.lock().await;
     #[cfg(target_os = "ios")]
     {
@@ -244,7 +291,7 @@ pub async fn choose_external_vault(
         if selection.cancelled {
             return Ok(None);
         }
-        let result = ExternalVaultResult::from(selection);
+        let result = selection;
         tauri::async_runtime::spawn_blocking(move || {
             let state = app.state::<AppState>();
             let bookmark_was_registered = state
@@ -254,13 +301,13 @@ pub async fn choose_external_vault(
                 .vaults
                 .iter()
                 .any(|vault| vault.bookmark_id.as_deref() == Some(result.bookmark_id.as_str()));
-            let search = match open_vault_path(
+            let (search, config) = match open_vault_path(
                 app.clone(),
                 &state,
                 result.path.clone(),
                 Some((result.bookmark_id.clone(), result.name.clone())),
             ) {
-                Ok(search) => search,
+                Ok(opened) => opened,
                 Err(error) => {
                     let rollback = if bookmark_was_registered {
                         app.ios_vault_access().rollback_staged()
@@ -275,11 +322,13 @@ pub async fn choose_external_vault(
                     });
                 }
             };
-            app.ios_vault_access().commit_staged()?;
+            if let Err(error) = app.ios_vault_access().commit_staged() {
+                log::error!("Could not finalize vault scope after activation: {error}");
+            }
             if let Err(error) = search.queue_vault_refresh(&result.path) {
                 log::error!("Failed to queue opened vault search refresh: {error}");
             }
-            Ok(Some(result))
+            Ok(Some(config))
         })
         .await
         .map_err(|error| error.to_string())?
@@ -296,8 +345,20 @@ pub async fn restore_external_vault(
     app: AppHandle,
     state: State<'_, AppState>,
     bookmark_id: String,
-) -> Result<ExternalVaultResult, String> {
+    expected: Option<VaultIdentity>,
+) -> Result<AppConfig, String> {
     let _transition = state.vault_transition.lock().await;
+    {
+        let config = state.config.lock().map_err(|error| error.to_string())?;
+        validate_vault_origin(&config, expected.as_ref())?;
+        if !config
+            .vaults
+            .iter()
+            .any(|vault| vault.bookmark_id.as_deref() == Some(bookmark_id.as_str()))
+        {
+            return Err("This vault is no longer in the saved list. Reopen the vault menu.".into());
+        }
+    }
     #[cfg(target_os = "ios")]
     {
         let resolver_app = app.clone();
@@ -306,16 +367,16 @@ pub async fn restore_external_vault(
         })
         .await
         .map_err(|error| error.to_string())??;
-        let result = ExternalVaultResult::from(selection);
+        let result = selection;
         tauri::async_runtime::spawn_blocking(move || {
             let state = app.state::<AppState>();
-            let search = match open_vault_path(
+            let (search, config) = match open_vault_path(
                 app.clone(),
                 &state,
                 result.path.clone(),
                 Some((result.bookmark_id.clone(), result.name.clone())),
             ) {
-                Ok(search) => search,
+                Ok(opened) => opened,
                 Err(error) => {
                     return Err(match app.ios_vault_access().rollback_staged() {
                         Ok(()) => error,
@@ -325,11 +386,13 @@ pub async fn restore_external_vault(
                     });
                 }
             };
-            app.ios_vault_access().commit_staged()?;
+            if let Err(error) = app.ios_vault_access().commit_staged() {
+                log::error!("Could not finalize vault scope after activation: {error}");
+            }
             if let Err(error) = search.queue_vault_refresh(&result.path) {
                 log::error!("Failed to queue opened vault search refresh: {error}");
             }
-            Ok(result)
+            Ok(config)
         })
         .await
         .map_err(|error| error.to_string())?
@@ -2519,6 +2582,31 @@ pub async fn import_tag_icon(
 
 // ── General Settings ──
 
+#[cfg(test)]
+mod editor_mode_tests;
+
+fn persist_new_note_editor_mode(
+    config: &mut AppConfig,
+    mode: NewNoteEditorMode,
+    path: &Path,
+) -> Result<(), String> {
+    let mut next = config.clone();
+    next.new_note_editor_mode = Some(mode);
+    next.new_notes_in_source_mode = mode != NewNoteEditorMode::Rich;
+    save_app_config_to(&next, path)?;
+    *config = next;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_new_note_editor_mode(
+    state: State<'_, AppState>,
+    mode: NewNoteEditorMode,
+) -> Result<(), String> {
+    let mut config = state.config.lock().map_err(|error| error.to_string())?;
+    persist_new_note_editor_mode(&mut config, mode, &app_config_path()?)
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub fn set_general_settings(
@@ -2573,7 +2661,11 @@ pub fn set_general_settings(
     config.show_line_numbers = show_line_numbers;
     config.show_link_arrows = show_link_arrows;
     config.default_view_mode = default_view_mode;
-    config.new_notes_in_source_mode = new_notes_in_source_mode;
+    config.new_notes_in_source_mode = config
+        .new_note_editor_mode
+        .map_or(new_notes_in_source_mode, |mode| {
+            mode != NewNoteEditorMode::Rich
+        });
     config.show_tray_icon = show_tray_icon;
     config.close_to_tray = close_to_tray;
     config.enable_wiki_links = enable_wiki_links;
@@ -4406,7 +4498,7 @@ pub fn sync_now(app: AppHandle) -> Result<(), String> {
     };
     std::thread::spawn(move || {
         use tauri::Emitter;
-        let result = crate::sync::run_sync(app.clone(), vault.clone(), cfg);
+        let result = crate::sync::run_sync(app.clone(), vault.clone(), bookmark_id.clone(), cfg);
         app.state::<AppState>()
             .syncing
             .store(false, Ordering::SeqCst);
@@ -4429,7 +4521,7 @@ pub fn sync_now(app: AppHandle) -> Result<(), String> {
             Err(e) => {
                 let _ = app.emit(
                     "sync-error",
-                    serde_json::json!({ "vault_path": vault, "success": false, "error": e }),
+                    serde_json::json!({ "vault_path": vault, "bookmark_id": bookmark_id, "success": false, "error": e }),
                 );
             }
         }
