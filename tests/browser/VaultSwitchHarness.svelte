@@ -4,6 +4,7 @@
 	import VaultSwitchFrame from './VaultSwitchFrame.svelte';
 	import { appConfig } from '../../src/lib/stores/app';
 	import { applyLanguage } from '../../src/lib/i18n';
+	import { isMobile } from '../../src/lib/platform';
 	import { openVault, restoreExternalVault } from '../../src/lib/api';
 	import { open as pickFolder } from '@tauri-apps/plugin-dialog';
 	import { createVaultSwitch, activeVaultIdentity, mergeVaultActivation, vaultIdentityKey } from '../../src/lib/utils/vault-switch';
@@ -14,7 +15,7 @@
 	appConfig.set({ active_vault: a.path, active_bookmark_id: null, vaults, show_note_switcher: false, theme: 'light', language: 'en' } as AppConfig);
 	const saved = new Map(vaults.map(vault => [vault.path, `# ${vault.name}\n\nSaved note in ${vault.path}`]));
 	let frame = $state<VaultSwitchFrame>();
-	let busy = $state(false), managing = $state(false), mobile = $state(false), dark = $state(false);
+	let busy = $state(false), managing = $state(false), mobile = $state(isMobile), dark = $state(false);
 	let failSave = false, failOpen = false, holdOpen = false, folder: string | null = null;
 	let resolveOpen: (() => void) | null = null;
 	const calls: {command: string; args?: any}[] = [];
@@ -58,7 +59,7 @@
 		saves++; if (failSave) return false;
 		saved.set(get(appConfig)!.active_vault!, text); return true;
 	}
-	const add = () => switcher.add(async () => {
+	const add = () => mobile ? switcher.manage() : switcher.add(async () => {
 		const path = await pickFolder({ directory: true, multiple: false });
 		return typeof path === 'string' ? { path, bookmarkId: null, existing: false } : null;
 	});

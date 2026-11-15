@@ -8,7 +8,6 @@
 	import { applyUiScale, defaultUiScale } from '$lib/ui-scale';
 	import { listen } from '@tauri-apps/api/event';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
-	import { installMcpWindow } from '$lib/mcp';
 	import { mcpBusy, mcpWindowReady } from '$lib/utils/mcp-editor';
 	import { t } from '$lib/i18n';
 	import VaultPicker from '$lib/components/VaultPicker.svelte';
@@ -165,6 +164,7 @@
 
 		if (!isMobile) {
 			try {
+				const { installMcpWindow } = await import('$lib/mcp');
 				const dispose = await installMcpWindow(() => !loading && (noteWindowPath ? !!$activeNotePath : !$vaultReady || mcpWindowReady()));
 				if (pageDisposed) dispose(); else removeMcp = dispose;
 			} catch (error) { console.error('MCP editor listener is unavailable:', error); }

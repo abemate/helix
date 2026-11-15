@@ -89,7 +89,7 @@
 		localStorage.setItem('helix-tablet-nav-hidden', hidden ? '1' : '0');
 	}
 	import { openVault, restoreExternalVault, loadVaultState, saveVaultState, readNote, deleteNote, createDailyNote, createBackup, getPendingOpenFile, ackPendingOpenFile, addQuickAccess, removeQuickAccess, getQuickAccess, setTheme, syncNow, setTaskDone, setTaskPriority, setTaskDue } from '$lib/api';
-	import { darkThemes, isAndroid } from '$lib/platform';
+	import { darkThemes, isAndroid, isMobile as isMobileTarget } from '$lib/platform';
 	import { openNoteWindow } from '$lib/utils/window';
 	import { normalizeStartupView, resolveStartupTarget } from '$lib/utils/startup-view';
 	import { isCurrentVaultEvent, sameNoteTags, updateNoteList } from '$lib/utils/note-list-updates';
@@ -195,7 +195,7 @@
 	// A fresh layout also reloads clean notes after returning from vault management.
 	activateVaultData(ownerVault, ownerBookmark, true);
 	let stateReady = false;
-	const unregisterMcpReadiness = registerMcpReadiness(() => stateReady && !vaultSwitchBusy && !restoringNote && pendingOpenDrain === null);
+	const unregisterMcpReadiness = isMobileTarget ? () => {} : registerMcpReadiness(() => stateReady && !vaultSwitchBusy && !restoringNote && pendingOpenDrain === null);
 	onDestroy(unregisterMcpReadiness);
 	let restoringNote = false;
 	let disposed = false;

@@ -59,6 +59,10 @@ test('production wiring guards dirty/IME edits, preserves presentation, and uses
   const editor=await readFile(new URL('../src/lib/components/Editor.svelte',import.meta.url),'utf8');
   assert.match(editor,/\$editorDirty \|\| externalOperationBusy \|\| source\.view\?\.compositionStarted \|\| source\.view\?\.composing \|\| editor\?\.view\.composing/);
   assert.match(editor,/loadNote\(path, content\.content, undefined, true\)/);
+  assert.match(editor,/isMobile \? \(\) => \{\} : registerMcpEditor/);
   const client=await readFile(new URL('../src/lib/mcp.ts',import.meta.url),'utf8');assert.match(client,/mcp_request_state/);
+  assert.match(client,/if \(isMobile\) return \(\) => \{\};/);
+  const native=await readFile(new URL('../src-tauri/src/lib.rs',import.meta.url),'utf8');assert.match(native,/#\[cfg\(desktop\)\]\s*pub mod mcp;/);
+  for(const command of ['mcp_status','mcp_set_access','mcp_client_config','mcp_editor_ready','mcp_request_state','mcp_active_request'])assert.match(native,new RegExp('#\\[cfg\\(desktop\\)\\]\\s*mcp::'+command));
   const page=await readFile(new URL('../src/routes/+page.svelte',import.meta.url),'utf8');assert.match(page,/inert=\{\$mcpBusy\}/);
 });

@@ -23,6 +23,25 @@ test('real Settings Integrations defaults off, enables read-only and copies a pa
   await page.screenshot({path:testInfo.outputPath('mcp-settings-desktop.png'),fullPage:true});
 });
 
+for (const platform of [{name:'Android',android:true,ios:false},{name:'iOS',android:false,ios:true}]) {
+  test(`${platform.name} hides desktop MCP settings and never starts its listeners or native calls`,async({page})=>{
+    const components:string[]=[];
+    page.on('request',request=>{if(/\/McpSettings\.svelte(?:\?|$)/.test(request.url()))components.push(request.url());});
+    await page.addInitScript(flags=>Object.assign(window,{__HELIX_PLATFORM__:{mobile:true,...flags}}),{android:platform.android,ios:platform.ios});
+    await page.setViewportSize({width:390,height:844});
+    await page.goto('/?fixture=mcp');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('button',{name:'General',exact:true})).toHaveClass(/active/);
+    await expect(page.getByRole('button',{name:'Integrations',exact:true})).toHaveCount(0);
+    await expect(page.locator('.mcp-settings')).toHaveCount(0);
+    expect(components).toEqual([]);
+    await page.evaluate(()=>(window as any).mcpSettingsFixture.install());
+    expect((await settings(page)).calls.filter((call:any)=>call.command.startsWith('mcp_'))).toEqual([]);
+    await page.getByRole('button',{name:'Editor',exact:true}).click();
+    await expect(page.getByRole('button',{name:'Editor',exact:true})).toHaveClass(/active/);
+  });
+}
+
 test('editing needs confirmation and failed permission saves keep the previous grant selected',async({page})=>{
   await page.goto('/?fixture=mcp');const toggle=page.getByRole('switch',{name:'Allow MCP access to this vault'});await expect(toggle).toBeEnabled();await toggle.click();
   await page.getByRole('radio',{name:'Allow editing',exact:true}).click();

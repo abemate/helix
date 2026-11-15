@@ -4,6 +4,8 @@ Desktop integration for **1.3.8**, in release preparation. No 1.3.8 release tag 
 
 ## Set it up
 
+MCP is desktop-only. Android and iOS do not include its native runtime or commands, do not install its editor listeners, and do not show the Integrations tab in Settings. Mobile vault switching remains a separate feature and uses the platform's existing storage access flow.
+
 Use an AI client that supports **local stdio MCP servers**. Web-only clients that accept only remote MCP URLs cannot use this configuration; the private bridge URL is not a public MCP endpoint.
 
 1. Open **Settings → Integrations → MCP access** in a rebuilt HelixNotes desktop app.

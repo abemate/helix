@@ -7618,7 +7618,7 @@
 	window.addEventListener('helixnotes-open-note', handleOpenNote);
 
 	const mcpEditorReady = () => !(editorDisposed || isLoadingNote || pendingContent !== null || !$activeNotePath || !loadedPath || $editorDirty || externalOperationBusy || source.view?.compositionStarted || source.view?.composing || editor?.view.composing);
-	const unregisterMcpEditor = registerMcpEditor(async () => {
+	const unregisterMcpEditor = isMobile ? () => {} : registerMcpEditor(async () => {
 		if (!mcpEditorReady()) return null;
 		const path = $activeNotePath!, vault = $appConfig?.active_vault;
 		const session = saves.capture();

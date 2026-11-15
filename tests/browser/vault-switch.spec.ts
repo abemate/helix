@@ -145,6 +145,28 @@ test('a long current name fits the real title bar at a narrow desktop width', as
 	expect(await page.locator('.titlebar').evaluate(element=>element.scrollWidth)).toBeLessThanOrEqual(640);
 });
 
+test.describe('mobile vault selection',()=>{
+	test.use({hasTouch:true,viewport:{width:390,height:844}});
+	for(const platform of [{name:'Android',android:true,ios:false},{name:'iOS',android:false,ios:true}]){
+		test(`${platform.name} keeps saved-vault switching and sends Add through mobile management`,async({page})=>{
+			await page.addInitScript(flags=>Object.assign(window,{__HELIX_PLATFORM__:{mobile:true,...flags}}),{android:platform.android,ios:platform.ios});
+			await page.reload();await expect(page.locator('.cm-editor')).toBeVisible();
+			await page.evaluate(()=>(window as any).vaultFixture.edit(' mobile draft'));
+			const text=(await snapshot(page)).editor.text;
+			await page.getByRole('button',{name:'Switch vault: Work',exact:true}).tap();
+			await vaultRow(page,'/archive/Work').tap();
+			await expect.poll(async()=>(await snapshot(page)).active.path).toBe('/archive/Work');
+			await page.getByRole('button',{name:'Switch vault: Work',exact:true}).tap();
+			await vaultRow(page,'/notes/Work').tap();
+			await expect.poll(async()=>(await snapshot(page)).editor.text).toBe(text);
+			await page.getByRole('button',{name:'Switch vault: Work',exact:true}).tap();
+			await page.getByRole('menuitem',{name:'Add vault…'}).tap();
+			await expect(page.getByRole('heading',{name:'Vault management fixture'})).toBeVisible();
+			expect((await snapshot(page)).calls.some((call:any)=>call.command==='plugin:dialog|open'||call.command.startsWith('mcp_'))).toBe(false);
+		});
+	}
+});
+
 test('security-scoped vaults restore by bookmark and accept a refreshed provider path', async ({ page }) => {
 	await page.evaluate(()=>(window as any).vaultFixture.bookmarks());
 	await menu(page); await page.getByRole('menuitemradio').filter({hasText:'Files B'}).click();

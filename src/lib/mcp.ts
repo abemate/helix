@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { get } from 'svelte/store';
 import { createMcpWindowGate, mcpBusy, type McpFinish } from './utils/mcp-editor';
 import type { VaultIdentity } from './types';
+import { isMobile } from './platform';
 
 export type McpAccess = 'off' | 'read' | 'write';
 export interface McpStatus { mode: McpAccess; ready: boolean; error?: string | null }
@@ -12,6 +13,8 @@ export const setMcpAccess = (vault: VaultIdentity, mode: McpAccess) => invoke<Mc
 export const getMcpClientConfig = (vault: VaultIdentity) => invoke<Record<string, unknown>>('mcp_client_config', { vault });
 
 export async function installMcpWindow(ready: () => boolean): Promise<() => void> {
+	// Mobile binaries do not contain an MCP runtime or its native commands.
+	if (isMobile) return () => {};
 	let focused: HTMLElement | null = null;
 	const gate = createMcpWindowGate({ ready, reply: (id, accepted) => invoke('mcp_editor_ready', { id, accepted }),
 		busy(value) {
