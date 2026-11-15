@@ -21,6 +21,7 @@
 	import type { FileEvent } from '$lib/types';
 	import { isCurrentVaultEvent } from '$lib/utils/note-list-updates';
 	import { beginNoteNavigation, isCurrentNoteNavigation, cancelNoteNavigation } from '$lib/utils/note-navigation';
+	import { mcpBusy } from '$lib/utils/mcp-editor';
 
 	let { notePath, vaultPath }: { notePath: string; vaultPath: string | null } = $props();
 	const ownerVault = untrack(() => vaultPath);
@@ -191,11 +192,11 @@
 			async function refreshOpenNote(restored = false) {
 				const path = $activeNotePath;
 				const openingNote = $activeNote;
-				if (!path || !openingNote) return;
+				if ($mcpBusy || !path || !openingNote) return;
 				const request = ++fileRefreshRequest;
 				try {
 					const content = await readNote(ownerVault!, path);
-					if (!isCurrentOwner() || request !== fileRefreshRequest || $activeNotePath !== path) return;
+					if ($mcpBusy || !isCurrentOwner() || request !== fileRefreshRequest || $activeNotePath !== path) return;
 					if ($editorDirty) {
 						if (restored && content.raw !== editor?.getAcceptedRaw()) editor?.flagExternalConflict();
 						return;
@@ -204,6 +205,7 @@
 					$activeNote = content;
 					editor?.loadNote(path, content.content);
 				} catch (error) {
+					if ($mcpBusy) return;
 					if (restored && isCurrentOwner() && request === fileRefreshRequest && $activeNotePath === path) {
 						if ($editorDirty) editor?.flagExternalConflict();
 						else {

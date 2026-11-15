@@ -49,6 +49,7 @@
 	import { RevisionSaveQueue, type SaveRevision } from '$lib/utils/revision-save';
 	import { isCurrentVaultEvent } from '$lib/utils/note-list-updates';
 	import { beginNoteNavigation, isCurrentNoteNavigation, cancelNoteNavigation } from '$lib/utils/note-navigation';
+	import { registerMcpEditor } from '$lib/utils/mcp-editor';
 	import { encryptSecretText, decryptSecretText, readSecretTitle } from '$lib/utils/secrets';
 	import { WrapSelectedText } from '$lib/editor/extensions/wrapSelectedText';
 	import { CodeBlockInputScroll } from '$lib/editor/extensions/codeBlockInputScroll';
@@ -4087,7 +4088,7 @@
 		loadFailure = path;
 	}
 
-	export function loadNote(path: string, content: string, taskTarget?: TaskRecord) {
+	export function loadNote(path: string, content: string, taskTarget?: TaskRecord, preservePresentation = false) {
 		loadFailure = null;
 		imageRetries.clear();
 		cancelProgressiveLoad();
@@ -4127,10 +4128,10 @@
 		// use the saved editor preference without changing existing notes' presentation.
 		const isViewer = !!get(viewerNote);
 		const isNewNote = $activeNote?.meta.title === 'Untitled' && !content.replace(/^---[\s\S]*?---\s*/, '').trim();
-		if (isNewNote && !isViewer) selectEditorMode(newNoteEditorMode($appConfig));
+		if (isNewNote && !isViewer && !preservePresentation) selectEditorMode(newNoteEditorMode($appConfig));
 		lastSourceMode = $sourceMode;
 		const shouldBeReadOnly = isViewer || isTrashedNote(path, $appConfig?.active_vault)
-			? true : (isNewNote ? false : ($appConfig?.default_view_mode ?? false));
+			? true : preservePresentation ? $readOnly : (isNewNote ? false : ($appConfig?.default_view_mode ?? false));
 		$readOnly = shouldBeReadOnly;
 		if (editor) editor.setEditable(!shouldBeReadOnly && !externalOperationBusy);
 		const editorBody = editorElement?.closest('.editor-body') as HTMLElement | null;
@@ -7616,7 +7617,32 @@
 	}
 	window.addEventListener('helixnotes-open-note', handleOpenNote);
 
+	const mcpEditorReady = () => !(editorDisposed || isLoadingNote || pendingContent !== null || !$activeNotePath || !loadedPath || $editorDirty || externalOperationBusy || source.view?.compositionStarted || source.view?.composing || editor?.view.composing);
+	const unregisterMcpEditor = registerMcpEditor(async () => {
+		if (!mcpEditorReady()) return null;
+		const path = $activeNotePath!, vault = $appConfig?.active_vault;
+		const session = saves.capture();
+		const release = await beginPathMutation();
+		if (!release) return null;
+		let finished = false;
+		return async (finish) => {
+			if (finished) return; finished = true;
+			try {
+				const normalize = (value: string) => value.replace(/\\/g, '/');
+				if (vault && finish.vaultPath === vault && normalize(finish.path) === normalize(path) && !editorDisposed && $activeNotePath === path && saves.isCurrentSession(session) && !$editorDirty) {
+					const content = await readNote(vault, path);
+					if (!editorDisposed && $activeNotePath === path && saves.isCurrentSession(session) && !$editorDirty && content.raw !== $activeNote?.raw) {
+						$activeNote = content;
+						loadNote(path, content.content, undefined, true);
+					}
+				}
+			} catch { if (!editorDisposed) flagExternalConflict(); }
+			finally { release(); }
+		};
+	}, mcpEditorReady);
+
 	onDestroy(() => {
+		unregisterMcpEditor();
 		cancelProgressiveLoad();
 		void flushSave();
 		closeAiMenu();

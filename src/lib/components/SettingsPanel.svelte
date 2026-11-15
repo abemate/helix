@@ -6,6 +6,7 @@
 	import ThemedSelect from './ThemedSelect.svelte';
 	import DailyNoteTemplate from './DailyNoteTemplate.svelte';
 	import NewNoteEditorSetting from './NewNoteEditorSetting.svelte';
+	import McpSettings from './McpSettings.svelte';
 	import { newNoteEditorMode, type EditorMode } from '$lib/editor/mode';
 	import { setNewNoteEditorMode } from '$lib/api';
 	import AiModelPicker from './AiModelPicker.svelte';
@@ -25,7 +26,7 @@
 
 	const modKey = navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl';
 
-	type Tab = 'general' | 'editor' | 'styling' | 'import' | 'backup' | 'maintenance' | 'ai' | 'sync' | 'updates';
+	type Tab = 'general' | 'editor' | 'styling' | 'import' | 'backup' | 'maintenance' | 'integrations' | 'ai' | 'sync' | 'updates';
 	let activeTab = $state<Tab>('styling');
 
 	// Updates state
@@ -1353,6 +1354,10 @@
 						</svg>
 						{$ui("ui.maintenance")}
 					</button>
+					<button class="tab-btn" class:active={activeTab === 'integrations'} onclick={() => activeTab = 'integrations'}>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 3 2 4m6-4-2 4M7 7h10v4a5 5 0 0 1-10 0V7Zm5 9v5" /></svg>
+						{$ui('mcp.integrations')}
+					</button>
 					<button class="tab-btn" class:active={activeTab === 'ai'} onclick={() => activeTab = 'ai'}>
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M12 8V4l-2-2"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/>
@@ -2349,6 +2354,8 @@
 							</div>
 						</div>
 
+					{:else if activeTab === 'integrations'}
+						<div class="settings-section"><McpSettings /></div>
 					{:else if activeTab === 'ai'}
 						<div class="tab-content">
 							<div class="settings-section">

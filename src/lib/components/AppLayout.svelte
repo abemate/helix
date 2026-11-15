@@ -94,6 +94,7 @@
 	import { normalizeStartupView, resolveStartupTarget } from '$lib/utils/startup-view';
 	import { isCurrentVaultEvent, sameNoteTags, updateNoteList } from '$lib/utils/note-list-updates';
 	import { beginNoteNavigation, isCurrentNoteNavigation, cancelNoteNavigation } from '$lib/utils/note-navigation';
+	import { registerMcpReadiness, mcpBusy } from '$lib/utils/mcp-editor';
 	import { isPathInDirectory, isTrashedNote } from '$lib/utils/paths';
 	import { get } from 'svelte/store';
 	import type { VaultState, FileEvent, NotebookEntry, NoteEntry, TaskItem, SearchResult } from '$lib/types';
@@ -194,6 +195,8 @@
 	// A fresh layout also reloads clean notes after returning from vault management.
 	activateVaultData(ownerVault, ownerBookmark, true);
 	let stateReady = false;
+	const unregisterMcpReadiness = registerMcpReadiness(() => stateReady && !vaultSwitchBusy && !restoringNote && pendingOpenDrain === null);
+	onDestroy(unregisterMcpReadiness);
 	let restoringNote = false;
 	let disposed = false;
 	let navigationToken = 0;
@@ -1066,12 +1069,12 @@
 
 	let activeRefreshRequest = 0;
 	async function refreshActiveNote(path: string, restored = false) {
-		if (vaultSwitchBusy || path !== $activeNotePath || !$activeNote || !ownerIsCurrent()) return;
+		if (vaultSwitchBusy || $mcpBusy || path !== $activeNotePath || !$activeNote || !ownerIsCurrent()) return;
 		const request = ++activeRefreshRequest;
 		const openingNote = $activeNote;
 		try {
 			const content = await readNote(ownerVault!, path);
-			if (vaultSwitchBusy || !ownerIsCurrent() || request !== activeRefreshRequest || $activeNotePath !== path) return;
+			if (vaultSwitchBusy || $mcpBusy || !ownerIsCurrent() || request !== activeRefreshRequest || $activeNotePath !== path) return;
 			if ($editorDirty) {
 				if (restored && content.raw !== editor?.getAcceptedRaw()) editor?.flagExternalConflict();
 				return;
@@ -1081,6 +1084,7 @@
 			if ($viewerNote?.path === path) $viewerNote = { path, content: content.content };
 			editor?.loadNote(path, content.content);
 		} catch (error) {
+			if ($mcpBusy) return;
 			if (restored && ownerIsCurrent() && request === activeRefreshRequest && $activeNotePath === path) {
 				if ($editorDirty) editor?.flagExternalConflict();
 				else {

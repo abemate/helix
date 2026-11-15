@@ -5,6 +5,8 @@ mod commands;
 mod history;
 mod i18n;
 mod image_proxy;
+#[cfg(desktop)]
+pub mod mcp;
 mod search;
 mod state;
 mod sync;
@@ -79,6 +81,8 @@ pub fn run() {
             let _ = (webview, payload);
         })
         .setup(move |app| {
+            #[cfg(desktop)]
+            mcp::McpRuntime::install(app.handle());
             #[cfg(target_os = "ios")]
             app.handle().plugin(tauri_plugin_ios_vault_access::init())?;
 
@@ -163,6 +167,18 @@ pub fn run() {
             commands::restore_external_vault,
             commands::remove_vault,
             commands::get_app_config,
+            #[cfg(desktop)]
+            mcp::mcp_status,
+            #[cfg(desktop)]
+            mcp::mcp_set_access,
+            #[cfg(desktop)]
+            mcp::mcp_client_config,
+            #[cfg(desktop)]
+            mcp::mcp_editor_ready,
+            #[cfg(desktop)]
+            mcp::mcp_request_state,
+            #[cfg(desktop)]
+            mcp::mcp_active_request,
             #[cfg(desktop)]
             commands::complete_window_close,
             commands::set_theme,
@@ -374,6 +390,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
     app.run(|app, event| {
+        #[cfg(desktop)]
+        if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+            if mcp::McpRuntime::editing(app) {
+                api.prevent_exit();
+                return;
+            }
+        }
         #[cfg(desktop)]
         if let tauri::RunEvent::ExitRequested {
             code: Some(_), api, ..

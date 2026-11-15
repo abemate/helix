@@ -83,6 +83,9 @@ pub struct NoteContent {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct VaultConfig {
+    /// Public non-secret binding; forgetting/re-adding a vault must not restore old MCP grants.
+    #[serde(default, deserialize_with = "lenient_option")]
+    pub mcp_grant_id: Option<String>,
     pub path: String,
     pub name: String,
     #[serde(default)]

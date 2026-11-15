@@ -54,6 +54,7 @@ export interface NoteContent {
 }
 
 export interface VaultConfig {
+  mcp_grant_id?: string | null;
   path: string;
   name: string;
   bookmark_id?: string | null;

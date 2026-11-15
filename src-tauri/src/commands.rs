@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_fs::FsExt;
 
-fn index_note_bg(search: Option<Arc<SearchIndex>>, path: &str) {
+pub(crate) fn index_note_bg(search: Option<Arc<SearchIndex>>, path: &str) {
     if let Some(search) = search {
         if let Err(error) = search.queue_index_note(path) {
             log::error!("Failed to queue note indexing: {error}");
@@ -545,6 +545,9 @@ pub fn complete_window_close<R: Runtime>(
     window: tauri::Window<R>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    if crate::mcp::McpRuntime::editing(window.app_handle()) {
+        return Err("An MCP edit is still running. Wait for it to finish before closing.".into());
+    }
     if state.should_hide_to_tray(
         window.label(),
         window.app_handle().tray_by_id("helixnotes").is_some(),
@@ -993,20 +996,39 @@ pub async fn save_note(
     tauri::async_runtime::spawn_blocking(move || {
         // Keep ordering even if the calling window closes while its save runs.
         let _save_guard = save_guard;
-        if let Some(saved) = operations::save_note(&vault_path, &path, &meta, &body, &expected_raw)?
-        {
-            crate::history::maybe_snapshot(
-                &vault_path,
-                &saved.id,
-                &saved.previous_raw,
-                max_versions,
-            );
-            index_note_bg(search, &path);
-        }
+        commit_note(
+            search,
+            &vault_path,
+            &path,
+            &meta,
+            &body,
+            &expected_raw,
+            max_versions,
+        )?;
         operations::read_vault_note(&vault_path, &path)
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+/// Shared commit path for the editor and authenticated MCP writes. The caller owns note_save.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn commit_note(
+    search: Option<Arc<SearchIndex>>,
+    vault: &str,
+    path: &str,
+    meta: &NoteMeta,
+    body: &str,
+    expected_raw: &str,
+    max_versions: u32,
+) -> Result<bool, String> {
+    if let Some(saved) = operations::save_note(vault, path, meta, body, expected_raw)? {
+        crate::history::maybe_snapshot(vault, &saved.id, &saved.previous_raw, max_versions);
+        index_note_bg(search, path);
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -4674,7 +4696,7 @@ pub fn set_mobile_config_dir(path: std::path::PathBuf) {
     let _ = MOBILE_CONFIG_DIR.set(path);
 }
 
-fn app_config_path() -> Result<std::path::PathBuf, String> {
+pub(crate) fn app_config_path() -> Result<std::path::PathBuf, String> {
     // Prefer the injected mobile dir when present (set only on mobile); fall back to
     // the platform config dir on desktop.
     let app_dir = if let Some(mobile_dir) = MOBILE_CONFIG_DIR.get() {
@@ -4854,7 +4876,7 @@ fn save_app_config(config: &AppConfig) -> Result<(), String> {
     save_app_config_to(config, &path)
 }
 
-fn save_app_config_to(config: &AppConfig, path: &Path) -> Result<(), String> {
+pub(crate) fn save_app_config_to(config: &AppConfig, path: &Path) -> Result<(), String> {
     let data = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
     write_private_file(path, data.as_bytes())?;
     Ok(())

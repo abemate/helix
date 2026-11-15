@@ -34,5 +34,5 @@ test('Settings has connected mode buttons and keeps the separate View-mode toggl
   assert.doesNotMatch(settings,/class:on=\{newNotesInSourceMode\}/);
   assert.match(settings,/class:on=\{defaultViewMode\} role="switch"/);
   const editor=await readFile(new URL('../src/lib/components/Editor.svelte',import.meta.url),'utf8');
-  assert.match(editor,/if \(isNewNote && !isViewer\) selectEditorMode\(newNoteEditorMode\(\$appConfig\)\)/);
+  assert.match(editor,/if \(isNewNote && !isViewer && !preservePresentation\) selectEditorMode\(newNoteEditorMode\(\$appConfig\)\)/);
 });

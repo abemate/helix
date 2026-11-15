@@ -173,6 +173,7 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 - Themes (light, dark, and built-in palettes), accent colors, fonts including bundled Ubuntu and Ubuntu Mono, 80-200% interface scale
 - [Daily-note templates](docs/daily-note-templates.md), with per-vault Markdown import/editing and date/title placeholders, applied only to new notes
 - Interface languages: English, Russian, Dutch, German, Spanish, French, Italian, Portuguese (Portugal) and Portuguese (Brazil), with live switching
+- [MCP integration](docs/mcp.md) in Settings, with a packaged helper, per-vault read-only access and opt-in native note editing; no Node.js installation required (1.3.8, unreleased)
 - Local plain-text files, no company cloud
 
 ### Version history
@@ -227,7 +228,7 @@ pnpm tauri dev
 
 ### Verification
 
-Run the frontend checks and tests, Rust tests and lints, and production frontend build with one command:
+Run the frontend checks and tests, MCP safety/native stdio tests, Rust tests and lints, and production frontend build with one command. The native MCP test also builds a debug app/helper executable; it does not create an installer or release package:
 
 ```bash
 pnpm verify
