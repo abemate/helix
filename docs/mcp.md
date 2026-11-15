@@ -1,6 +1,6 @@
 # Connect an AI client to HelixNotes
 
-Unreleased desktop integration. Application versions remain **1.3.7**; no installer, release tag or npm package has been published for this work.
+Desktop integration for **1.3.8**, in release preparation. No 1.3.8 release tag or npm package has been published.
 
 ## Set it up
 

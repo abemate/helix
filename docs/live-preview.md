@@ -1,6 +1,6 @@
 # Live Preview
 
-Unreleased work for 1.3.8. Application versions remain 1.3.7 until release preparation.
+Work for 1.3.8, in release preparation. Version 1.3.8 has not yet been published.
 
 ## Choose an editor mode
 
