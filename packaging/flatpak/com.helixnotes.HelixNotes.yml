@@ -49,7 +49,7 @@ modules:
       env:
         CARGO_HOME: /run/build/helixnotes/cargo
         CARGO_NET_OFFLINE: 'true'
-        CARGO_BUILD_JOBS: '4'
+        CARGO_BUILD_JOBS: '2'
         XDG_CACHE_HOME: /run/build/helixnotes/flatpak-node/cache
         HELIXNOTES_INSTALL_TYPE: flatpak
     build-commands:
@@ -57,7 +57,7 @@ modules:
       - pnpm tauri build --no-bundle --config '{"identifier":"com.helixnotes.HelixNotes"}'
       - install -Dm755 src-tauri/target/release/helixnotes /app/bin/helixnotes
       - install -Dm644 packaging/flatpak/com.helixnotes.HelixNotes.desktop /app/share/applications/com.helixnotes.HelixNotes.desktop
-      - install -Dm644 packaging/flatpak/com.helixnotes.HelixNotes.metainfo.xml /app/share/metainfo/com.helixnotes.HelixNotes.metainfo.xml
+      - install -Dm644 release-metainfo.xml /app/share/metainfo/com.helixnotes.HelixNotes.metainfo.xml
       - install -Dm644 src-tauri/icons/icon.svg /app/share/icons/hicolor/scalable/apps/com.helixnotes.HelixNotes.svg
       - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/com.helixnotes.HelixNotes.png
       - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/com.helixnotes.HelixNotes.png
@@ -65,7 +65,10 @@ modules:
     sources:
       - type: git
         url: https://gitlab.com/ArkHost/HelixNotes.git
-        commit: d5dc7147ab9c8d3fa7a8ce034339e9f2a5b5e260
+        commit: 962f3302f00f9bb7b046a0535249f2b3be592f27
         disable-submodules: true
+      - type: file
+        path: com.helixnotes.HelixNotes.metainfo.xml
+        dest-filename: release-metainfo.xml
       - cargo-sources.json
       - node-sources.json

@@ -10,7 +10,7 @@ tray libraries.
 HelixNotes is distributed through ArkHost's signed Flatpak repository at
 `https://repo.arkhost.com/flatpak/`, served by Shiny. Install using
 [HelixNotes.flatpakref](https://repo.arkhost.com/flatpak/HelixNotes.flatpakref).
-The public catalog advertises version 1.3.7.
+The public catalog advertises version 1.3.8.
 
 The application ID is `com.helixnotes.HelixNotes`; the repository collection ID is
 `com.arkhost.Flatpak`. Keep both stable so installed applications receive future
@@ -30,8 +30,8 @@ After building the bundle, prepare a fresh signed output:
 
 ```sh
 python3 packaging/flatpak/prepare-repository.py \
-  src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak \
-  --output /path/to/arkhost-flatpak-1.3.7 \
+  src-tauri/target/flatpak/HelixNotes_1.3.8_x86_64.flatpak \
+  --output /path/to/arkhost-flatpak-1.3.8 \
   --gpg-key FULL_OPENPGP_FINGERPRINT
 ```
 
@@ -79,7 +79,7 @@ Run from the repository root:
 git submodule update --init packaging/flatpak/shared-modules
 flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.node24//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08
 flatpak run org.flatpak.Builder --user --force-clean --collection-id=com.arkhost.Flatpak --state-dir=src-tauri/target/flatpak/state --repo=src-tauri/target/flatpak/arkhost-origin src-tauri/target/flatpak/build packaging/flatpak/com.helixnotes.HelixNotes.yml
-flatpak build-bundle src-tauri/target/flatpak/arkhost-origin src-tauri/target/flatpak/HelixNotes_1.3.7_x86_64.flatpak com.helixnotes.HelixNotes stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak build-bundle src-tauri/target/flatpak/arkhost-origin src-tauri/target/flatpak/HelixNotes_1.3.8_x86_64.flatpak com.helixnotes.HelixNotes stable --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
 The commands require a user-local Flathub remote. If only a system remote exists,
@@ -134,9 +134,12 @@ build; it does not grant network access to the build sandbox.
 The store developer is Yuri Karamian. The Flatpak build overrides Tauri's
 identifier only for this package; native packages retain their existing ID.
 
-Version 1.3.7 is published in the ArkHost Flatpak repository with stable package
-metadata dated 2026-11-10. GitLab release tags and other platform channels are
-managed separately. Keep the manifest pinned to the matching source revision.
+Version 1.3.8 is published in the ArkHost Flatpak repository with stable package
+metadata dated 2026-11-16. GitLab release tags and other platform channels are
+managed separately. The manifest pins the tested application revision `962f330`
+and supplies the release MetaInfo as a separate, version-controlled source file.
+This keeps the application code identical to the tested packages while including
+the matching store metadata and refreshed offline dependencies.
 
 The published package targets x86_64. The earlier test bundle in Nextcloud uses
 the `com.helixnotes.app` ID and has not been overwritten. Install through the
@@ -156,12 +159,15 @@ The Flathub repository needs these files at its root:
 - `cargo-sources.json`
 - `node-sources.json`
 - `flathub.json`
+- The MetaInfo file referenced by the manifest
 - The `shared-modules` Git submodule, pinned to
   `6be1f986ac28a2b7d745e5ff45a3f8a2d3345083`
 
-Desktop, icon and MetaInfo files are installed from the pinned application source.
-The source currently includes the packaging metadata and the Flatpak watcher fix.
-It is a preparation revision, not a published v1.3.7 release tag.
+Desktop and icon files are installed from the pinned application source. The
+MetaInfo file is supplied separately by the manifest. Use the release's prepared
+submission patch as a complete set of inputs; it includes its referenced metadata
+file. The source pin identifies the tested 1.3.8 application code, not the later
+packaging-only synchronization commit.
 
 Use a branch based on `flathub/flathub`'s `new-pr` branch. Preserve the upstream
 submission template. Author the submission description and any review replies
