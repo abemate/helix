@@ -1,6 +1,6 @@
 # AI models and image input
 
-These changes are planned for 1.3.8 and are not in the published 1.3.7 packages.
+Included in HelixNotes 1.3.8 for Linux, Windows and Android. Updated Apple builds are not yet available.
 
 ## Choose a model
 

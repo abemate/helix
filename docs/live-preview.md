@@ -1,6 +1,6 @@
 # Live Preview
 
-Work for 1.3.8, in release preparation. Version 1.3.8 has not yet been published.
+Included in HelixNotes 1.3.8 for Linux, Windows and Android. Updated Apple builds are not yet available.
 
 ## Choose an editor mode
 

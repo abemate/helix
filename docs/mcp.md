@@ -1,6 +1,6 @@
 # Connect an AI client to HelixNotes
 
-Desktop integration for **1.3.8**, in release preparation. No 1.3.8 release tag or npm package has been published.
+Included in **HelixNotes 1.3.8** for Linux and Windows. The native helper is packaged with the app; no Node.js or npm installation is required. Updated Apple builds are not yet available.
 
 ## Set it up
 
