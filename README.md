@@ -1,7 +1,7 @@
 # HelixNotes
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://gitlab.com/ArkHost/HelixNotes/-/blob/main/LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.3.7-green)](https://gitlab.com/ArkHost/HelixNotes/-/releases/v1.3.7)
+[![Latest Release](https://img.shields.io/badge/release-v1.3.8-green)](https://gitlab.com/ArkHost/HelixNotes/-/releases/v1.3.8)
 [![Website](https://img.shields.io/badge/web-helixnotes.com-purple)](https://helixnotes.com)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20Android-lightgrey)]()
 
@@ -10,7 +10,7 @@ A local markdown note-taking app built with Tauri, SvelteKit, and Rust.
 Your notes are stored as standard Markdown files on your local filesystem.
 No cloud, no lock-in.
 
-## Download (v1.3.7)
+## Download (v1.3.8)
 
 ### Linux
 
@@ -29,7 +29,7 @@ Install [Flatpak](https://flatpak.org/setup/) first if it is not already availab
 
 The AppImage works only on Fedora 43+, Arch Linux, and openSUSE Tumbleweed (x86_64).
 
-[Download AppImage](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_amd64.AppImage)
+[Download AppImage](https://download.helixnotes.com/releases/v1.3.8/HelixNotes_1.3.8_amd64.AppImage)
 
 #### Distro-specific packages
 
@@ -119,16 +119,16 @@ sudo eopkg it helixnotes
 
 #### Manual package downloads
 
-- [.deb](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_amd64.deb) (Ubuntu 22.04+)
-- [.rpm](https://download.helixnotes.com/releases/v1.3.7/HelixNotes-1.3.7-1.x86_64.rpm)
+- [.deb](https://download.helixnotes.com/releases/v1.3.8/HelixNotes_1.3.8_amd64.deb) (Ubuntu 22.04+)
+- [.rpm](https://download.helixnotes.com/releases/v1.3.8/HelixNotes-1.3.8-1.x86_64.rpm)
 
 ### Windows
 
-[Download Installer](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_x64-setup.exe) (Windows 10/11)
+[Download Installer](https://download.helixnotes.com/releases/v1.3.8/HelixNotes_1.3.8_x64-setup.exe) (Windows 10/11)
 
 ### macOS (v1.3.6)
 
-The macOS 1.3.7 release is delayed. Version 1.3.6 remains available below.
+The macOS 1.3.8 release is delayed. Version 1.3.6 remains available below.
 
 [Download .dmg (Apple Silicon)](https://download.helixnotes.com/releases/v1.3.6/HelixNotes_1.3.6_aarch64.dmg) (M-series Macs)
 
@@ -142,7 +142,7 @@ xattr -cr /Applications/HelixNotes.app
 
 ### Android
 
-[Download APK](https://download.helixnotes.com/releases/v1.3.7/HelixNotes_1.3.7_android.apk)
+[Download APK](https://download.helixnotes.com/releases/v1.3.8/HelixNotes_1.3.8_android.apk)
 
 ---
 
@@ -163,17 +163,17 @@ All releases: [gitlab.com/ArkHost/HelixNotes/-/releases](https://gitlab.com/ArkH
 - Manual notebook sorting (drag to reorder above, into, or below)
 - External `.md` viewer mode with import-to-vault flow
 - PDF preview, Obsidian import, "Show in File Manager"
-- [Editable Live preview](docs/live-preview.md) alongside rich text and Markdown source, with one compact editor-mode selector and a three-button new-note preference (1.3.8, unreleased)
-- [Quick vault switching](docs/vault-switching.md) from the title bar, with saved-vault paths, Add vault and Manage Vaults (1.3.8, unreleased)
+- [Editable Live preview](docs/live-preview.md) alongside rich text and Markdown source, with one compact editor-mode selector and a three-button new-note preference
+- [Quick vault switching](docs/vault-switching.md) on desktop and mobile, with saved-vault paths, Add vault and Manage Vaults
 - AI writing tools (Ollama / OpenAI-compatible / Anthropic / OpenAI)
-- [Provider model discovery and opt-in image input](docs/ai-models-and-images.md) (1.3.8, unreleased)
+- [Provider model discovery and opt-in image input](docs/ai-models-and-images.md)
 - **Optional WebDAV sync** to your own server (Nextcloud, ownCloud, a NAS): manual or automatic, with keep-both conflict copies
 - Version history with main-area diffs and rendered read-only snapshots, automatic backups
 - Multi-window, file associations, focus mode, view mode
 - Themes (light, dark, and built-in palettes), accent colors, fonts including bundled Ubuntu and Ubuntu Mono, 80-200% interface scale
 - [Daily-note templates](docs/daily-note-templates.md), with per-vault Markdown import/editing and date/title placeholders, applied only to new notes
 - Interface languages: English, Russian, Dutch, German, Spanish, French, Italian, Portuguese (Portugal) and Portuguese (Brazil), with live switching
-- [MCP integration](docs/mcp.md) in Settings, with a packaged helper, per-vault read-only access and opt-in native note editing; no Node.js installation required (1.3.8, unreleased)
+- [Desktop MCP integration](docs/mcp.md) in Settings, with a packaged helper, per-vault read-only access and opt-in native note editing; no Node.js installation required
 - Local plain-text files, no company cloud
 
 ### Version history
@@ -215,7 +215,7 @@ See the [translation guide and example file](docs/translations/README.md) for pl
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (1.88+)
-- [Node.js](https://nodejs.org/) (18+)
+- [Node.js](https://nodejs.org/) (22 LTS or later)
 - [pnpm](https://pnpm.io/)
 - System dependencies for Tauri: see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
