@@ -19,8 +19,9 @@
     "test:mcp": "pnpm --filter @helixnotes/mcp test",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "test:browser": "playwright test --config tests/browser/playwright.config.ts --workers=2",
+    "test:updater-packaging": "python3 -m unittest discover -s packaging/updater -p 'test_*.py'",
     "lint:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
-    "verify": "pnpm check && pnpm test && pnpm test:mcp && pnpm test:rust && pnpm test:mcp:native && pnpm lint:rust && pnpm build",
+    "verify": "pnpm check && pnpm test && pnpm test:updater-packaging && pnpm test:mcp && pnpm test:rust && pnpm test:mcp:native && pnpm lint:rust && pnpm build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
