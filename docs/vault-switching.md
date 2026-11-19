@@ -1,6 +1,6 @@
 # Quick vault switching
 
-Included in HelixNotes 1.3.8 for Linux, Windows and Android. Updated Apple builds are not yet available.
+Included in HelixNotes 1.3.8 on desktop and mobile.
 
 The desktop title bar shows the current vault name beside the app name. Open its dropdown to switch directly to another saved vault. Each row shows its name and folder path, with a checkmark on the current vault. Paths distinguish vaults with identical names; long names truncate in the title bar but remain readable in the menu.
 

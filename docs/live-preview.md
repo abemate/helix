@@ -1,6 +1,6 @@
 # Live Preview
 
-Included in HelixNotes 1.3.8 for Linux, Windows and Android. Updated Apple builds are not yet available.
+Included in HelixNotes 1.3.8 on desktop and mobile.
 
 ## Choose an editor mode
 
