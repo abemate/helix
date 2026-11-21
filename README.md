@@ -1,4 +1,43 @@
-# HelixNotes
+# HelixNotes-tabs
+
+> [!NOTE]
+> **HelixNotes-tabs is an unofficial copy of [HelixNotes](https://gitlab.com/ArkHost/HelixNotes) v1.3.8 with editor tabs added.**
+> It's shared for anyone who wants tabs. It is not maintained and is not affiliated with the HelixNotes developers.
+
+> [!WARNING]
+> **Please don't contact the official HelixNotes project about this copy.** The HelixNotes developers don't plan to add tabs and don't support this version.
+> Don't open issues, bug reports, feature requests or support questions with them about tabs or about anything you saw while running this copy.
+> Before reporting a problem upstream, reproduce it in an official HelixNotes release.
+>
+> This copy has no support either. Use it as is.
+
+> [!NOTE]
+> The changes are two commits on top of upstream `9445a8f` (see [Tabs](#tabs-this-copy) below):
+> - `feat(desktop): editor tabs`
+> - `fix(editor): offer "Save a copy" when the open note's file disappears`
+>
+> The rest of this README is the original HelixNotes README, apart from the translations section. Its download and install instructions are for official HelixNotes, which doesn't have tabs.
+
+## Tabs (this copy)
+
+![Tabs above the editor](docs/tabs/tabs-light.png)
+
+| Open a note in a new tab | Tab menu |
+|---|---|
+| ![Open in new tab](docs/tabs/tabs-dark-open-in-new-tab.png) | ![Tab context menu](docs/tabs/tabs-dark-tab-menu.png) |
+
+- Click a note to open it in the current tab. If it's already open in another tab, that tab is selected.
+- Middle-click a note, or right-click it and choose **Open in new tab**, to open it in a new tab.
+- Drag tabs to reorder them. Middle-click a tab to close it, or right-click it to close it, close the other tabs, or close the tabs to its right.
+- **Shortcuts:**
+  - Ctrl+T: new tab
+  - Ctrl+W: close tab
+  - Ctrl+Tab / Ctrl+Shift+Tab: next / previous tab
+  - Ctrl+Shift+T: reopen the last closed tab
+  - Ctrl+PageDown / Ctrl+PageUp: next / previous tab
+  - Alt+1…8: go to that tab; Alt+9: last tab
+- Tabs are saved per vault and come back after a restart.
+
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://gitlab.com/ArkHost/HelixNotes/-/blob/main/LICENSE)
 [![Latest Release](https://img.shields.io/badge/release-v1.3.8-green)](https://gitlab.com/ArkHost/HelixNotes/-/releases/v1.3.8)
@@ -200,9 +239,9 @@ Full documentation: [helixnotes.com/docs](https://helixnotes.com/docs.html)
 
 ## Contributing translations
 
-Want HelixNotes in your language? Copy the [English JSON catalog](src/lib/i18n/locales/en.json), translate its values, and attach the file to a GitLab issue using the **Translation** template. No build or programming experience is required.
+This copy doesn't accept translations. Its language files include strings for tabs, which official HelixNotes doesn't have, so don't submit them upstream.
 
-See the [translation guide and example file](docs/translations/README.md) for placeholders, plural forms and submission instructions.
+To translate official HelixNotes, start from the [official project](https://gitlab.com/ArkHost/HelixNotes) and follow its translation guide there. The copy of that guide in this repo (`docs/translations/`) is unchanged from upstream and still describes the official process.
 
 ## Tech Stack
 
