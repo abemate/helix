@@ -195,6 +195,13 @@
 							{/each}
 						{/each}
 						<div class="shortcut-row"><span class="shortcut-desc">{$ui("ui.close_panel_exit_focus")}</span><span class="shortcut-keys"><kbd>Esc</kbd></span></div>
+						{#if !isMobile}
+							<div class="shortcut-row"><span class="shortcut-desc">{$ui("ui.next_previous_tab")}</span><span class="shortcut-keys"><kbd>{modKey}</kbd>+<kbd>PgDn</kbd> / <kbd>{modKey}</kbd>+<kbd>PgUp</kbd></span></div>
+							{#if modKey !== '⌘'}
+								<div class="shortcut-row"><span class="shortcut-desc">{$ui("ui.go_to_tab_1_8")}</span><span class="shortcut-keys"><kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>8</kbd></span></div>
+								<div class="shortcut-row"><span class="shortcut-desc">{$ui("ui.go_to_last_tab")}</span><span class="shortcut-keys"><kbd>Alt</kbd>+<kbd>9</kbd></span></div>
+							{/if}
+						{/if}
 
 						<h4 class="shortcuts-group-title">{$ui("ui.formatting")}</h4>
 						<div class="shortcut-row"><span class="shortcut-desc">{$ui("ui.bold")}</span><span class="shortcut-keys"><kbd>{modKey}</kbd>+<kbd>B</kbd></span></div>

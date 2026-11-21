@@ -1,5 +1,6 @@
 import { writable, derived, get } from "svelte/store";
 import { isMobile } from "$lib/platform";
+import { tabs } from "$lib/stores/tabs";
 import { compareNaturalNames } from "$lib/utils/natural-sort";
 import type {
   AppConfig,
@@ -277,6 +278,7 @@ export function activateVaultData(vaultPath: string | null, bookmarkId: string |
   sortMode.set("modified");
   groupNotesByDate.set(false);
   navHistory.clear();
+  tabs.clear();
 }
 
 // Derived

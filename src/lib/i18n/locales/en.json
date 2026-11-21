@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "Allow your MCP client to edit notes in “{vault}”? It can change text, titles, tags and pins. Edits use normal saving and history; unsaved drafts block them. Continue only if you trust this client.",
   "mcp.applying": "Applying an MCP edit…",
-  "mcp.chooseVault": "Choose vault"
+  "mcp.chooseVault": "Choose vault",
+  "ui.new_tab": "New tab",
+  "ui.close_tab": "Close tab",
+  "ui.next_tab": "Next tab",
+  "ui.previous_tab": "Previous tab",
+  "ui.open_in_new_tab": "Open in new tab",
+  "ui.close_other_tabs": "Close other tabs",
+  "ui.close_tabs_to_the_right": "Close tabs to the right",
+  "ui.reopen_closed_tab": "Reopen closed tab",
+  "ui.next_previous_tab": "Next / previous tab",
+  "ui.go_to_tab_1_8": "Go to tab 1–8",
+  "ui.go_to_last_tab": "Go to last tab"
 }

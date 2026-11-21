@@ -201,6 +201,13 @@ export interface VaultState {
   tasks_hide_completed?: boolean;
   tasks_only_flagged?: boolean;
   tasks_sort?: string;
+  open_tabs?: OpenTab[];
+  active_tab?: number;
+}
+
+export interface OpenTab {
+  path: string;
+  title: string;
 }
 
 export interface SearchMatch {

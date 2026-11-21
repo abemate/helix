@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "¿Permitir que tu cliente MCP edite notas en «{vault}»? Podrá cambiar texto, títulos, etiquetas y elementos fijados. Se usan el guardado y el historial normales; los borradores sin guardar bloquean los cambios. Continúa solo si confías en este cliente.",
   "mcp.applying": "Aplicando un cambio MCP…",
-  "mcp.chooseVault": "Elegir bóveda"
+  "mcp.chooseVault": "Elegir bóveda",
+  "ui.new_tab": "Nueva pestaña",
+  "ui.close_tab": "Cerrar pestaña",
+  "ui.next_tab": "Pestaña siguiente",
+  "ui.previous_tab": "Pestaña anterior",
+  "ui.open_in_new_tab": "Abrir en una pestaña nueva",
+  "ui.close_other_tabs": "Cerrar las demás pestañas",
+  "ui.close_tabs_to_the_right": "Cerrar pestañas a la derecha",
+  "ui.reopen_closed_tab": "Reabrir pestaña cerrada",
+  "ui.next_previous_tab": "Pestaña siguiente / anterior",
+  "ui.go_to_tab_1_8": "Ir a la pestaña 1–8",
+  "ui.go_to_last_tab": "Ir a la última pestaña"
 }

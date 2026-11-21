@@ -459,6 +459,39 @@ impl Default for AppConfig {
     }
 }
 
+/// Saved tabs must never make the whole vault state unreadable: entries that
+/// do not parse are dropped and a bad index falls back to the first tab.
+fn lenient_tabs<'de, D>(deserializer: D) -> Result<Vec<OpenTab>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::Array(items) => items
+            .into_iter()
+            .filter_map(|item| serde_json::from_value::<OpenTab>(item).ok())
+            .filter(|tab| !tab.path.is_empty())
+            .collect(),
+        _ => Vec::new(),
+    })
+}
+
+fn lenient_index<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value.as_u64().map(|n| n as usize).unwrap_or(0))
+}
+
+/// One editor tab, remembered across restarts.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct OpenTab {
+    pub path: String,
+    #[serde(default)]
+    pub title: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultState {
     pub last_open_note: Option<String>,
@@ -493,6 +526,10 @@ pub struct VaultState {
     pub tasks_only_flagged: bool,
     #[serde(default)]
     pub tasks_sort: String,
+    #[serde(default, deserialize_with = "lenient_tabs")]
+    pub open_tabs: Vec<OpenTab>,
+    #[serde(default, deserialize_with = "lenient_index")]
+    pub active_tab: usize,
 }
 
 impl Default for VaultState {
@@ -516,6 +553,8 @@ impl Default for VaultState {
             tasks_hide_completed: true,
             tasks_only_flagged: false,
             tasks_sort: String::new(),
+            open_tabs: Vec::new(),
+            active_tab: 0,
         }
     }
 }
@@ -734,5 +773,30 @@ mod startup_view_tests {
         let config: AppConfig = serde_json::from_value(value).unwrap();
 
         assert!(config.scroll_to_change_font_size);
+    }
+}
+
+#[cfg(test)]
+mod open_tab_state_tests {
+    use super::VaultState;
+
+    #[test]
+    fn bad_tab_entries_do_not_discard_the_vault_state() {
+        let json = r#"{"last_open_note":null,"sidebar_width":300.0,"notelist_width":280.0,
+            "sidebar_collapsed":false,"note_order":{"/v/A.md":2},
+            "open_tabs":[{"path":123},{"title":"no path"},{"path":""},{"path":"/v/A.md","title":"A"}],
+            "active_tab":-4}"#;
+        let state: VaultState = serde_json::from_str(json).unwrap();
+        assert_eq!(state.sidebar_width, 300.0);
+        assert_eq!(state.note_order.get("/v/A.md"), Some(&2));
+        assert_eq!(state.open_tabs.len(), 1);
+        assert_eq!(state.open_tabs[0].path, "/v/A.md");
+        assert_eq!(state.active_tab, 0);
+
+        let json = r#"{"last_open_note":null,"sidebar_width":250.0,"notelist_width":280.0,
+            "sidebar_collapsed":false,"open_tabs":"garbage","active_tab":"x"}"#;
+        let state: VaultState = serde_json::from_str(json).unwrap();
+        assert_eq!(state.sidebar_width, 250.0);
+        assert!(state.open_tabs.is_empty());
     }
 }

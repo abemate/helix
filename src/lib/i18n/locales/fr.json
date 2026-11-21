@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP : {error}",
   "mcp.confirmWrite": "Autoriser votre client MCP à modifier les notes de « {vault} » ? Il pourra changer le texte, les titres, les étiquettes et l’épinglage. Les changements utilisent l’enregistrement et l’historique habituels ; les brouillons non enregistrés les bloquent. Continuez uniquement si vous faites confiance à ce client.",
   "mcp.applying": "Application d’une modification MCP…",
-  "mcp.chooseVault": "Choisir un coffre"
+  "mcp.chooseVault": "Choisir un coffre",
+  "ui.new_tab": "Nouvel onglet",
+  "ui.close_tab": "Fermer l’onglet",
+  "ui.next_tab": "Onglet suivant",
+  "ui.previous_tab": "Onglet précédent",
+  "ui.open_in_new_tab": "Ouvrir dans un nouvel onglet",
+  "ui.close_other_tabs": "Fermer les autres onglets",
+  "ui.close_tabs_to_the_right": "Fermer les onglets à droite",
+  "ui.reopen_closed_tab": "Rouvrir l’onglet fermé",
+  "ui.next_previous_tab": "Onglet suivant / précédent",
+  "ui.go_to_tab_1_8": "Aller à l’onglet 1–8",
+  "ui.go_to_last_tab": "Aller au dernier onglet"
 }

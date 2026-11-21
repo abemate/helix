@@ -14,6 +14,8 @@
 	import SettingsPanel from './SettingsPanel.svelte';
 	import InfoPanel from './InfoPanel.svelte';
 	import TitleBar from './TitleBar.svelte';
+	import TabBar from './TabBar.svelte';
+	import { tabs, samePath } from '$lib/stores/tabs';
 	import VaultSwitcher from './VaultSwitcher.svelte';
 	import { createVaultSwitch, activeVaultIdentity, mergeVaultActivation, vaultEventMatches } from '$lib/utils/vault-switch';
 	import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
@@ -97,7 +99,7 @@
 	import { registerMcpReadiness, mcpBusy } from '$lib/utils/mcp-editor';
 	import { isPathInDirectory, isTrashedNote } from '$lib/utils/paths';
 	import { get } from 'svelte/store';
-	import type { VaultState, FileEvent, NotebookEntry, NoteEntry, TaskItem, SearchResult } from '$lib/types';
+	import type { VaultState, NoteContent, FileEvent, NotebookEntry, NoteEntry, TaskItem, SearchResult } from '$lib/types';
 	import { completeWindowClose, cancelWindowClose } from '$lib/api';
 	import type { StartupTarget } from '$lib/utils/startup-view';
 
@@ -299,6 +301,7 @@
 	}
 
 	let unlistenOpenFile: (() => void) | null = null;
+	let unlistenTabMoves: (() => void) | null = null;
 
 	// Mobile editor header helpers
 	let noteRelativePath = $derived($activeNotePath && $appConfig?.active_vault ? $activeNotePath.replace($appConfig.active_vault + '/', '') : '');
@@ -385,6 +388,7 @@
 	async function handlePathsMoved(oldPath: string, newPath: string) {
 		if (!ownerIsCurrent()) return;
 		navHistory.remap(oldPath, newPath);
+		tabs.remap(oldPath, newPath);
 		const path = $activeNotePath;
 		if (!path || (path !== oldPath && !path.startsWith(oldPath + '/') && !path.startsWith(oldPath + '\\'))) return;
 		const migrated = newPath + path.slice(oldPath.length);
@@ -428,6 +432,205 @@
 		} catch (e) {
 			console.error('Failed to navigate history:', e);
 		}
+	}
+
+	// ── Tabs (desktop) ──
+	// One editor; each tab remembers a note. Any navigation updates the current
+	// tab (see tabs.noteShown), and the functions below switch between tabs.
+	$effect(() => {
+		const path = $activeNotePath;
+		const note = $activeNote;
+		if (isMobile) return;
+		const title = note && samePath(note.path, path) ? note.meta.title : null;
+		untrack(() => {
+			if (path) tabs.noteShown(path, title);
+			else void dropActiveTabIfMissing();
+		});
+	});
+
+	$effect(() => {
+		$tabs;
+		persistState();
+	});
+
+	// The open note was deleted somewhere (note list, another window, sync):
+	// close its tab instead of leaving a tab that points at nothing.
+	async function dropActiveTabIfMissing() {
+		const tab = tabs.activeTab();
+		if (!tab?.path || !ownerVault || restoringNote) return;
+		try {
+			await readNote(ownerVault, tab.path);
+		} catch {
+			if (!ownerIsCurrent() || $activeNotePath || tabs.activeTab()?.id !== tab.id) return;
+			await closeTab(tab.id);
+		}
+	}
+
+	function showEmptyTab() {
+		$viewerNote = null;
+		$activeNote = null;
+		$activeNotePath = null;
+		$editorDirty = false;
+	}
+
+	function presentNote(path: string, content: NoteContent) {
+		const isExternal = !isPathInDirectory(path, ownerVault);
+		taskNoteOpened = true;
+		$viewerNote = isExternal ? { path, content: content.content } : null;
+		$activeNote = content;
+		$activeNotePath = path;
+		$editorDirty = false;
+		if (isExternal) {
+			$readOnly = true;
+			$focusMode = true;
+		}
+		editor?.loadNote(path, content.content);
+	}
+
+	/** Load a tab's note into the editor. A tab whose note is gone is closed. */
+	async function showTab(id: number, token = beginNavigation()): Promise<boolean> {
+		if (!navigationIsCurrent(token)) return false;
+		if (editor && !(await editor.flushSave())) return false;
+		if (!navigationIsCurrent(token)) return false;
+		const tab = tabs.byId(id);
+		if (!tab) return false;
+		if (!tab.path) {
+			tabs.activate(id);
+			showEmptyTab();
+			return true;
+		}
+		if (samePath(tab.path, $activeNotePath)) {
+			tabs.activate(id);
+			return true;
+		}
+		const path = tab.path;
+		let content: NoteContent;
+		try {
+			content = await readNote(ownerVault!, path);
+		} catch (error) {
+			console.error('Failed to open tab:', error);
+			if (!navigationIsCurrent(token)) return false;
+			tabs.remove(id);
+			const next = tabs.activeTab();
+			if (!next) { showEmptyTab(); return false; }
+			if (!samePath(next.path, $activeNotePath)) return showTab(next.id, token);
+			return false;
+		}
+		if (!navigationIsCurrent(token)) return false;
+		if (editor && !(await editor.flushSave())) return false;
+		if (!navigationIsCurrent(token)) return false;
+		tabs.activate(id);
+		presentNote(path, content);
+		return true;
+	}
+
+	async function closeTab(id: number) {
+		const index = $tabs.tabs.findIndex((t) => t.id === id);
+		if (index < 0) return;
+		const closing = $tabs.tabs[index];
+		if (index !== $tabs.active) {
+			tabs.rememberClosed([closing.path]);
+			tabs.remove(id);
+			return;
+		}
+		const token = beginNavigation();
+		if (editor && !(await editor.flushSave())) return;
+		if (!navigationIsCurrent(token) || !tabs.byId(id)) return;
+		tabs.rememberClosed([closing.path]);
+		if ($tabs.tabs.length === 1) {
+			// Closing the last tab leaves an empty "New tab", like Obsidian.
+			tabs.empty(id);
+			showEmptyTab();
+			return;
+		}
+		tabs.remove(id);
+		const next = tabs.activeTab();
+		if (next) await showTab(next.id, token);
+	}
+
+	async function closeTabs(keepIds: number[], activeId: number) {
+		tabs.rememberClosed($tabs.tabs.filter((t) => !keepIds.includes(t.id)).map((t) => t.path));
+		const current = tabs.activeTab();
+		if (current && keepIds.includes(current.id)) {
+			tabs.keep(keepIds, current.id);
+			return;
+		}
+		const token = beginNavigation();
+		if (editor && !(await editor.flushSave())) return;
+		if (!navigationIsCurrent(token)) return;
+		tabs.keep(keepIds, activeId);
+		const next = tabs.activeTab();
+		if (next) await showTab(next.id, token);
+	}
+
+	async function newTab() {
+		const token = beginNavigation();
+		if (editor && !(await editor.flushSave())) return;
+		if (!navigationIsCurrent(token)) return;
+		const current = tabs.activeTab();
+		if (current && !current.path) return; // already on an empty tab
+		tabs.add(null);
+		showEmptyTab();
+	}
+
+	async function openInNewTab(path: string): Promise<boolean> {
+		const existing = tabs.find(path);
+		if (existing) return showTab(existing.id);
+		const token = beginNavigation();
+		if (editor && !(await editor.flushSave())) return false;
+		if (!navigationIsCurrent(token)) return false;
+		let content: NoteContent;
+		try {
+			content = await readNote(ownerVault!, path);
+		} catch (error) {
+			console.error('Failed to open note in new tab:', error);
+			return false;
+		}
+		if (!navigationIsCurrent(token)) return false;
+		if (editor && !(await editor.flushSave())) return false;
+		if (!navigationIsCurrent(token)) return false;
+		const current = tabs.activeTab();
+		// An empty tab is simply filled; otherwise add a tab next to the current one.
+		if (!current || current.path) tabs.add(path, content.meta.title);
+		presentNote(path, content);
+		return true;
+	}
+
+	/** Ctrl+Shift+T: reopen the most recently closed tab whose note still exists. */
+	async function reopenClosedTab() {
+		for (let path = tabs.takeClosed(); path; path = tabs.takeClosed()) {
+			if (isTrashedNote(path, ownerVault)) continue;
+			if (await openInNewTab(path)) return;
+		}
+	}
+
+	// A note was deleted, trashed or moved away on disk: close background tabs
+	// that pointed at it. Waits so a rename's "remove old name" event cannot
+	// beat the rename itself, and checks the file really is gone. The visible
+	// tab is left alone: the editor keeps its text and offers "Save a copy".
+	function pruneRemovedTabs(removedPath: string) {
+		if (isMobile) return;
+		const removed = removedPath.replace(/\\/g, '/');
+		setTimeout(async () => {
+			if (!ownerIsCurrent() || !ownerVault) return;
+			for (const tab of $tabs.tabs) {
+				if (!tab.path || tab.id === tabs.activeTab()?.id) continue;
+				const path = tab.path.replace(/\\/g, '/');
+				if (path !== removed && !path.startsWith(removed + '/')) continue;
+				try {
+					await readNote(ownerVault, tab.path);
+				} catch {
+					if (ownerIsCurrent() && tab.id !== tabs.activeTab()?.id) tabs.remove(tab.id);
+				}
+			}
+		}, 1500);
+	}
+
+	function cycleTab(direction: -1 | 1) {
+		const { tabs: list, active } = $tabs;
+		if (list.length < 2) return;
+		const index = (active + direction + list.length) % list.length;
+		void showTab(list[index].id);
 	}
 
 	async function handleOpenFile(filePath: string, token = beginNavigation()): Promise<boolean> {
@@ -482,7 +685,8 @@
 
 	async function restoreLastNote(path: string, token: number) {
 		const canRestore = () => navigationIsCurrent(token) && !$activeNotePath && !$editorDirty && !$viewerNote;
-		if (!canRestore() || isTrashedNote(path, ownerVault)) return;
+		if (!canRestore()) return;
+		if (isTrashedNote(path, ownerVault)) { dropUnrestorableTab(path, token); return; }
 		const isExternal = !isPathInDirectory(path, ownerVault);
 		if (isExternal && isAndroid) return;
 		restoringNote = true;
@@ -499,10 +703,20 @@
 			}
 			editor?.loadNote(path, content.content);
 		} catch (_) {
+			if (canRestore()) dropUnrestorableTab(path, token);
 		} finally {
 			restoringNote = false;
 			if (ownerIsCurrent()) persistState();
 		}
+	}
+
+	// A remembered tab whose note no longer exists: close it and open the next one.
+	function dropUnrestorableTab(path: string, token: number) {
+		const tab = tabs.find(path);
+		if (!tab) return;
+		tabs.remove(tab.id);
+		const next = tabs.activeTab();
+		if (next?.path) queueMicrotask(() => void restoreLastNote(next.path!, token));
 	}
 
 	async function persistVaultState() {
@@ -526,7 +740,8 @@
 			tasks_layout: $tasksLayout,
 			tasks_hide_completed: $tasksHideCompleted,
 			tasks_only_flagged: $tasksOnlyFlagged,
-			tasks_sort: $tasksSort
+			tasks_sort: $tasksSort,
+			...tabs.serialize()
 		};
 		try {
 			await saveVaultState(ownerVault, state);
@@ -892,10 +1107,12 @@
 				$noteOrder = rest;
 			}
 			$notes = $notes.filter((note) => note.path !== path);
+			const trashedTab = tabs.find(path);
 			if ($activeNotePath === path) {
 				$activeNote = null;
 				$activeNotePath = null;
 			}
+			if (trashedTab && !isMobile) void closeTab(trashedTab.id);
 			noteList?.refresh(true).catch((error) => console.error('Failed to refresh notes after trashing:', error));
 			if (isMobile && !$activeNotePath) $mobileView = 'notelist';
 			return true;
@@ -937,6 +1154,25 @@
 			return;
 		}
 
+		// Fixed tab-switching aliases, as in browsers and KDE apps:
+		// Ctrl+PageDown/PageUp = next/previous tab, Alt+1..8 = tab N, Alt+9 = last tab.
+		// (Ctrl+1..6 and Ctrl+Alt+1..6 are heading shortcuts; Option+digit types characters on macOS.)
+		if (!isMobile && $tabs.tabs.length) {
+			if (mod && !e.shiftKey && !e.altKey && (code === 'PageDown' || code === 'PageUp')) {
+				e.preventDefault();
+				cycleTab(code === 'PageDown' ? 1 : -1);
+				return;
+			}
+			if (!isMac && e.altKey && !mod && !e.shiftKey && /^Digit[1-9]$/.test(code)) {
+				e.preventDefault();
+				const n = Number(code.slice(5));
+				const list = $tabs.tabs;
+				const target = n === 9 ? list[list.length - 1] : list[n - 1];
+				if (target) void showTab(target.id);
+				return;
+			}
+		}
+
 		const action = matchAction(e, $keybindings);
 		if (action) {
 			// History navigation is bound to Alt+Left/Right by default. While the
@@ -953,6 +1189,23 @@
 					return;
 				case 'new-note':
 					createAndFocusNote();
+					return;
+				case 'new-tab':
+					if (!isMobile) void newTab();
+					return;
+				case 'close-tab': {
+					const current = tabs.activeTab();
+					if (!isMobile && current) void closeTab(current.id);
+					return;
+				}
+				case 'next-tab':
+					if (!isMobile) cycleTab(1);
+					return;
+				case 'prev-tab':
+					if (!isMobile) cycleTab(-1);
+					return;
+				case 'reopen-tab':
+					if (!isMobile) void reopenClosedTab();
 					return;
 				case 'toggle-theme': {
 					const customTheme = $customThemes.find(theme => theme.id === $resolvedTheme);
@@ -1135,6 +1388,7 @@
 		}
 		unlistenFileChange = await listen<FileEvent>('file-changed', ({ payload }) => {
 			if (!ownerIsCurrent() || !isCurrentVaultEvent(payload, ownerVault)) return;
+			if (payload.event_type === 'remove') pruneRemovedTabs(payload.path);
 			if (!payload.note) {
 				recentChanges.delete(payload.path);
 				scheduleFileRefresh(true);
@@ -1168,6 +1422,10 @@
 			scheduleFileRefresh(true);
 		});
 		if (!ownerIsCurrent()) { unlistenVaultRestored(); return; }
+		unlistenTabMoves = await listen<{ vault_path: string; old_path: string; new_path: string; new_title?: string | null }>('vault-path-moved', ({ payload }) => {
+			if (ownerIsCurrent() && payload.vault_path === ownerVault) tabs.remap(payload.old_path, payload.new_path, payload.new_title);
+		});
+		if (!ownerIsCurrent()) { unlistenTabMoves(); return; }
 		unlistenOpenFile = await listen<string>('open-file', (event) => {
 			if (ownerIsCurrent()) void handleOpenFile(event.payload);
 		});
@@ -1197,6 +1455,7 @@
 			if (typeof state.tasks_hide_completed === 'boolean') $tasksHideCompleted = state.tasks_hide_completed;
 			if (typeof state.tasks_only_flagged === 'boolean') $tasksOnlyFlagged = state.tasks_only_flagged;
 			if (state.tasks_sort === 'due' || state.tasks_sort === 'priority' || state.tasks_sort === 'note') $tasksSort = state.tasks_sort;
+			if (!isMobile) tabs.restore(state.open_tabs, state.active_tab);
 			lastNotePath = state.last_open_note ?? null;
 			lastViewMode = state.last_view_mode ?? '';
 			lastNotebook = state.last_notebook ?? null;
@@ -1206,8 +1465,12 @@
 
 		const restoreLastSession = $appConfig?.restore_last_session === true;
 
+		// Remembered tabs always come back; the active one opens in the editor.
+		const restoredTab = tabs.activeTab();
+		if (restoredTab?.path) lastNotePath = restoredTab.path;
+
 		// Display the remembered note independently of the metadata scans.
-		if (restoreLastSession && lastNotePath) void restoreLastNote(lastNotePath, startupToken);
+		if ((restoreLastSession || restoredTab?.path) && lastNotePath) void restoreLastNote(lastNotePath, startupToken);
 
 		await Promise.allSettled([sidebar?.refresh(), noteList?.refresh()]);
 		if (!ownerIsCurrent()) return;
@@ -1313,6 +1576,7 @@
 		unlistenClose?.();
 		if (fileRefreshTimer) clearTimeout(fileRefreshTimer);
 		unlistenOpenFile?.();
+		unlistenTabMoves?.();
 		removeMobileFlushListeners?.();
 		if (backupInterval) clearInterval(backupInterval);
 		if (syncInterval) clearInterval(syncInterval);
@@ -1578,7 +1842,7 @@
 
 				{#if !$notelistCollapsed}
 					<div class="notelist-panel" style="width: {$notelistWidth}px">
-						<NoteList bind:this={noteList} onNoteSelected={handleNoteSelected} onBeforeNoteSwitch={() => editor?.flushSave() ?? Promise.resolve(true)} onBeforeNoteDuplicate={() => editor?.forceSave() ?? Promise.resolve(true)} onBeforePathMutation={() => editor?.beginPathMutation() ?? Promise.resolve(() => {})} onPathsMoved={handlePathsMoved} onUpdateActiveNote={updateActiveNoteMetadata} onTagsChanged={handleTagsChanged} onRefreshTags={() => { if (!isMobile) void sidebar?.refreshTags(); }} onNoteMoved={() => sidebar?.refresh()} onNoteCreated={(token) => { editor?.focusTitle(token); }} onToggleTask={toggleTask} onSetTaskPriority={changeTaskPriority} onSetTaskDue={changeTaskDue} />
+						<NoteList bind:this={noteList} onOpenInNewTab={(path) => void openInNewTab(path)} onNoteSelected={handleNoteSelected} onBeforeNoteSwitch={() => editor?.flushSave() ?? Promise.resolve(true)} onBeforeNoteDuplicate={() => editor?.forceSave() ?? Promise.resolve(true)} onBeforePathMutation={() => editor?.beginPathMutation() ?? Promise.resolve(() => {})} onPathsMoved={handlePathsMoved} onUpdateActiveNote={updateActiveNoteMetadata} onTagsChanged={handleTagsChanged} onRefreshTags={() => { if (!isMobile) void sidebar?.refreshTags(); }} onNoteMoved={() => sidebar?.refresh()} onNoteCreated={(token) => { editor?.focusTitle(token); }} onToggleTask={toggleTask} onSetTaskPriority={changeTaskPriority} onSetTaskDue={changeTaskDue} />
 					</div>
 
 					<ResizeHandle onResize={handleNotelistResize} />
@@ -1597,6 +1861,10 @@
 			{/if}
 
 			<div class="editor-panel">
+				{#if !$focusMode}
+					<TabBar onSelect={(id) => void showTab(id)} onClose={(id) => void closeTab(id)} onNew={() => void newTab()} onCloseMany={(keep, active) => void closeTabs(keep, active)} />
+				{/if}
+				<div class="editor-host">
 				<Editor bind:this={editor} onMoveToTrash={trashOpenNote} onShowTag={showTagNotes} />
 				{#if $viewMode === 'tasks' && !taskNoteOpened}
 					<div class="tasks-editor-placeholder">
@@ -1606,6 +1874,7 @@
 						<p>{$ui("ui.select_a_task_to_open_its_note")}</p>
 					</div>
 				{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -1684,6 +1953,14 @@
 		height: 100%;
 		overflow: hidden;
 		min-width: 300px;
+		position: relative;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.editor-host {
+		flex: 1;
+		min-height: 0;
 		position: relative;
 	}
 

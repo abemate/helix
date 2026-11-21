@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "Permitir que o cliente MCP edite notas em “{vault}”? Ele poderá alterar texto, títulos, etiquetas e fixações. As alterações usam o salvamento e o histórico normais; rascunhos não salvos as bloqueiam. Continue apenas se confiar neste cliente.",
   "mcp.applying": "Aplicando uma alteração MCP…",
-  "mcp.chooseVault": "Escolher cofre"
+  "mcp.chooseVault": "Escolher cofre",
+  "ui.new_tab": "Nova aba",
+  "ui.close_tab": "Fechar aba",
+  "ui.next_tab": "Próxima aba",
+  "ui.previous_tab": "Aba anterior",
+  "ui.open_in_new_tab": "Abrir em nova aba",
+  "ui.close_other_tabs": "Fechar outras abas",
+  "ui.close_tabs_to_the_right": "Fechar abas à direita",
+  "ui.reopen_closed_tab": "Reabrir aba fechada",
+  "ui.next_previous_tab": "Próxima aba / aba anterior",
+  "ui.go_to_tab_1_8": "Ir para a aba 1–8",
+  "ui.go_to_last_tab": "Ir para a última aba"
 }

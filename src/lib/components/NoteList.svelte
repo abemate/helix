@@ -54,13 +54,14 @@
 	import TagLabel from './TagLabel.svelte';
 	import { isMobile, isAndroid } from '$lib/platform';
 
-	let { onNoteSelected = (_path: string, _content: string, _task?: TaskItem) => {}, onNoteMoved = () => {}, onBeforeNoteSwitch = async () => true, onBeforeNoteDuplicate = async () => true, onBeforePathMutation = async () => null, onPathsMoved = async (_old: string, _next: string) => {}, onUpdateActiveNote, onTagsChanged, onRefreshTags, onNoteCreated = () => {}, onToggleTask = async (_t: TaskItem) => {}, onSetTaskPriority = async (_t: TaskItem, _p: string | null) => {}, onSetTaskDue = async (_t: TaskItem, _d: string | null) => {} }: {
+	let { onNoteSelected = (_path: string, _content: string, _task?: TaskItem) => {}, onNoteMoved = () => {}, onBeforeNoteSwitch = async () => true, onBeforeNoteDuplicate = async () => true, onBeforePathMutation = async () => null, onPathsMoved = async (_old: string, _next: string) => {}, onUpdateActiveNote, onTagsChanged, onRefreshTags, onNoteCreated = () => {}, onToggleTask = async (_t: TaskItem) => {}, onSetTaskPriority = async (_t: TaskItem, _p: string | null) => {}, onSetTaskDue = async (_t: TaskItem, _d: string | null) => {}, onOpenInNewTab }: {
 		onNoteSelected?: (path: string, content: string, task?: TaskItem) => void;
 		onNoteMoved?: () => void;
 		onBeforeNoteSwitch?: () => Promise<boolean>;
 		onBeforeNoteDuplicate?: () => Promise<boolean>;
 		onBeforePathMutation?: () => Promise<(() => void) | null>;
 		onPathsMoved?: (oldPath: string, newPath: string) => Promise<void>;
+		onOpenInNewTab?: (path: string) => void;
 		onUpdateActiveNote: (patch: Pick<NoteMeta, 'pinned' | 'tags'>) => Promise<boolean>;
 		onTagsChanged: (path: string, nextTags: string[]) => void;
 		onRefreshTags: () => void;
@@ -1481,6 +1482,13 @@
 					class:note-drag-below={canCustomReorder && noteDragOver === noteIndex && noteDragFrom !== null && noteDragHalf === 'bottom'}
 					title={$viewMode === 'quickaccess' ? note.path : (getNotebookPath(note) ? `${getNotebookPath(note)}/${note.meta.title}` : note.meta.title)}
 					onclick={(e) => handleNoteClick(e, note)}
+					onmousedown={(e) => { if (e.button === 1 && onOpenInNewTab) e.preventDefault(); }}
+					onauxclick={(e) => {
+						if (e.button !== 1 || !onOpenInNewTab || $viewMode === 'trash') return;
+						e.preventDefault();
+						clearSelection();
+						onOpenInNewTab(note.path);
+					}}
 					onkeydown={(e) => {
 						if (e.key === 'F2') {
 							e.preventDefault();
@@ -1783,6 +1791,14 @@
 					</svg>
 					{$ui("ui.add_to_quick_access")}
 				</button>
+			{/if}
+			{#if onOpenInNewTab}
+			<button onclick={() => { const n = contextMenu!.note; contextMenu = null; onOpenInNewTab(n.path); }}>
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="3" y="6" width="18" height="15" rx="2"/><path d="M3 10h18"/><path d="M8 6V3h8v3"/>
+				</svg>
+				{$ui("ui.open_in_new_tab")}
+			</button>
 			{/if}
 			<button onclick={() => { const n = contextMenu!.note; contextMenu = null; openNoteWindow(ownerVault!, n.path, n.meta.title); }}>
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

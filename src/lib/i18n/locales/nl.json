@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "Mag je MCP-client notities in ‘{vault}’ bewerken? Hij kan tekst, titels, tags en vastzetten wijzigen. Normaal opslaan en versiegeschiedenis worden gebruikt; niet-opgeslagen concepten blokkeren wijzigingen. Ga alleen verder als je deze client vertrouwt.",
   "mcp.applying": "MCP-wijziging toepassen…",
-  "mcp.chooseVault": "Kluis kiezen"
+  "mcp.chooseVault": "Kluis kiezen",
+  "ui.new_tab": "Nieuw tabblad",
+  "ui.close_tab": "Tabblad sluiten",
+  "ui.next_tab": "Volgend tabblad",
+  "ui.previous_tab": "Vorig tabblad",
+  "ui.open_in_new_tab": "Openen in nieuw tabblad",
+  "ui.close_other_tabs": "Andere tabbladen sluiten",
+  "ui.close_tabs_to_the_right": "Tabbladen rechts sluiten",
+  "ui.reopen_closed_tab": "Gesloten tabblad heropenen",
+  "ui.next_previous_tab": "Volgend / vorig tabblad",
+  "ui.go_to_tab_1_8": "Naar tabblad 1–8",
+  "ui.go_to_last_tab": "Naar laatste tabblad"
 }

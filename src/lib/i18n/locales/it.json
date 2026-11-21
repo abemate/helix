@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "Consentire al client MCP di modificare le note in «{vault}»? Potrà cambiare testo, titoli, etichette e note fissate. Le modifiche usano il normale salvataggio e la cronologia; le bozze non salvate le bloccano. Continua solo se ti fidi di questo client.",
   "mcp.applying": "Applicazione di una modifica MCP…",
-  "mcp.chooseVault": "Scegli archivio"
+  "mcp.chooseVault": "Scegli archivio",
+  "ui.new_tab": "Nuova scheda",
+  "ui.close_tab": "Chiudi scheda",
+  "ui.next_tab": "Scheda successiva",
+  "ui.previous_tab": "Scheda precedente",
+  "ui.open_in_new_tab": "Apri in una nuova scheda",
+  "ui.close_other_tabs": "Chiudi le altre schede",
+  "ui.close_tabs_to_the_right": "Chiudi le schede a destra",
+  "ui.reopen_closed_tab": "Riapri scheda chiusa",
+  "ui.next_previous_tab": "Scheda successiva / precedente",
+  "ui.go_to_tab_1_8": "Vai alla scheda 1–8",
+  "ui.go_to_last_tab": "Vai all’ultima scheda"
 }

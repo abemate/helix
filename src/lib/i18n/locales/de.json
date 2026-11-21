@@ -1215,5 +1215,16 @@
   "mcp.failed": "MCP: {error}",
   "mcp.confirmWrite": "Darf Ihr MCP-Client Notizen in „{vault}“ bearbeiten? Er kann Text, Titel, Tags und Anheftungen ändern. Änderungen nutzen normales Speichern und den Versionsverlauf; ungespeicherte Entwürfe blockieren sie. Fahren Sie nur fort, wenn Sie diesem Client vertrauen.",
   "mcp.applying": "MCP-Änderung wird angewendet…",
-  "mcp.chooseVault": "Tresor auswählen"
+  "mcp.chooseVault": "Tresor auswählen",
+  "ui.new_tab": "Neuer Tab",
+  "ui.close_tab": "Tab schließen",
+  "ui.next_tab": "Nächster Tab",
+  "ui.previous_tab": "Vorheriger Tab",
+  "ui.open_in_new_tab": "In neuem Tab öffnen",
+  "ui.close_other_tabs": "Andere Tabs schließen",
+  "ui.close_tabs_to_the_right": "Tabs rechts schließen",
+  "ui.reopen_closed_tab": "Geschlossenen Tab wieder öffnen",
+  "ui.next_previous_tab": "Nächster / vorheriger Tab",
+  "ui.go_to_tab_1_8": "Zu Tab 1–8 wechseln",
+  "ui.go_to_last_tab": "Zum letzten Tab"
 }
