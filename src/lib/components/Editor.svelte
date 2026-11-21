@@ -3515,7 +3515,7 @@
 
 	const saves = new RevisionSaveQueue();
 	let savedBlobImages = new Map<string, string>();
-	let saveError = $state<{ message: string; path: string; vault: string; conflict: boolean } | null>(null);
+	let saveError = $state<{ message: string; path: string; vault: string; conflict: boolean; missing?: boolean } | null>(null);
 	let saveAttempt = 0;
 	let retryingSave = $state(false);
 
@@ -3559,7 +3559,9 @@
 		console.error('Save failed:', error);
 		if (origin.path && origin.vault && isCurrentSaveAttempt(origin, attempt)) {
 			const message = error instanceof Error ? error.message : String(error);
-			saveError = { message: message.trim() || 'The note could not be saved.', path: origin.path, vault: origin.vault, conflict: /conflict|modified outside/i.test(message) };
+			// "missing": the file was deleted or moved away outside the app. Retrying
+			// cannot succeed, so the draft can also be saved as a copy.
+			saveError = { message: message.trim() || 'The note could not be saved.', path: origin.path, vault: origin.vault, conflict: /conflict|modified outside/i.test(message), missing: /no such file|os error 2|cannot find the (file|path)|not found/i.test(message) };
 		}
 		return false;
 	}
@@ -3576,7 +3578,7 @@
 	}
 
 	async function saveConflictCopy() {
-		if (!saveError?.conflict || !$activeNote || !$activeNotePath || !$appConfig?.active_vault || retryingSave) return;
+		if (!(saveError?.conflict || saveError?.missing) || !$activeNote || !$activeNotePath || !$appConfig?.active_vault || retryingSave) return;
 		const origin = captureOrigin();
 		const vault = origin.vault!;
 		const originalPath = origin.path!;
@@ -8282,6 +8284,9 @@
 					<button type="button" onclick={saveConflictCopy} disabled={retryingSave} aria-label={$ui("ui.save_draft_as_a_copy")}>{$ui("ui.save_a_copy")}</button>
 					<button type="button" onclick={reloadConflictedNote} disabled={retryingSave} aria-label={$ui("ui.discard_draft_and_reload_note")}>{$ui("ui.reload_from_disk")}</button>
 				{:else}
+					{#if saveError.missing}
+						<button type="button" onclick={saveConflictCopy} disabled={retryingSave} aria-label={$ui("ui.save_draft_as_a_copy")}>{$ui("ui.save_a_copy")}</button>
+					{/if}
 					<button type="button" onclick={retrySave} disabled={retryingSave} aria-label={$ui("ui.retry_saving_note")}>
 						{retryingSave ? $ui("ui.saving") : $ui("ui.retry")}
 					</button>
